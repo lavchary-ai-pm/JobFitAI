@@ -1,50 +1,91 @@
-const express = require('express');
-const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 
-const app = express();
-
-// Initialize Anthropic client with environment variable
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-// Middleware
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Backend is running' });
-});
+/**
+ * Truncate text smartly
+ */
+function truncateText(text, maxChars) {
+  if (text.length <= maxChars) return text;
+  const firstPart = text.substring(0, Math.floor(maxChars * 0.4));
+  const lastPart = text.substring(text.length - Math.floor(maxChars * 0.6));
+  return (
+    firstPart +
+    '\n\n[... middle content abbreviated ...]\n\n' +
+    lastPart
+  );
+}
 
 /**
- * POST /api/analyze
- * Analyzes resume and job description with Claude
+ * Main Cloudflare Workers handler
  */
-app.post('/api/analyze', async (req, res) => {
-  try {
-    const { resumeText, jobDescription } = req.body;
-
-    if (!resumeText || !jobDescription) {
-      return res.status(400).json({
-        error: 'Missing resumeText or jobDescription',
+export default {
+  async fetch(request, env, ctx) {
+    // Handle CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
       });
     }
 
-    // Validate API key
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.error('ANTHROPIC_API_KEY not set in environment');
-      return res.status(500).json({
-        error: 'Server configuration error: API key not set',
-      });
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // Health check endpoint
+    if (path === '/health' && request.method === 'GET') {
+      return new Response(
+        JSON.stringify({ status: 'ok', message: 'Backend is running' }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      );
     }
 
-    // Truncate texts to save tokens
-    const truncatedResume = truncateText(resumeText, 2000);
-    const truncatedJob = truncateText(jobDescription, 1500);
+    // Analysis endpoint
+    if (path === '/api/analyze' && request.method === 'POST') {
+      try {
+        const body = await request.json();
+        const { resumeText, jobDescription } = body;
 
-    const userPrompt = `RESUME:
+        if (!resumeText || !jobDescription) {
+          return new Response(
+            JSON.stringify({ error: 'Missing resumeText or jobDescription' }),
+            {
+              status: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            }
+          );
+        }
+
+        // Check API key
+        if (!env.ANTHROPIC_API_KEY) {
+          return new Response(
+            JSON.stringify({ error: 'Server configuration error: API key not set' }),
+            {
+              status: 500,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            }
+          );
+        }
+
+        // Truncate texts
+        const truncatedResume = truncateText(resumeText, 2000);
+        const truncatedJob = truncateText(jobDescription, 1500);
+
+        const userPrompt = `RESUME:
 ${truncatedResume}
 
 ---
@@ -100,18 +141,21 @@ Return ONLY this JSON structure (no other text, no markdown):
   "overallInsight": "Strong fit for this role."
 }`;
 
-    console.log('Calling Claude API with Anthropic SDK...');
+        // Create Anthropic client with env API key
+        const client = new Anthropic({
+          apiKey: env.ANTHROPIC_API_KEY,
+        });
 
-    const response = await anthropic.messages.create({
-      model: 'claude-opus-4-1',
-      max_tokens: 1200,
-      messages: [
-        {
-          role: 'user',
-          content: userPrompt,
-        },
-      ],
-      system: `You are a recruitment expert. Your job is to accurately extract and analyze resume and job description data.
+        const response = await client.messages.create({
+          model: 'claude-opus-4-1',
+          max_tokens: 1200,
+          messages: [
+            {
+              role: 'user',
+              content: userPrompt,
+            },
+          ],
+          system: `You are a recruitment expert. Your job is to accurately extract and analyze resume and job description data.
 
 CRITICAL REQUIREMENTS:
 1. For location: Extract the EXACT location from the resume (e.g., "Whitehouse Station, NJ" not just "NJ")
@@ -120,90 +164,70 @@ CRITICAL REQUIREMENTS:
 4. For explanations: Always include specific examples of what matched and what's missing
 
 Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
-    });
+        });
 
-    // Extract JSON from response
-    const content = response.content[0].text;
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+        // Extract JSON from response
+        const content = response.content[0].text;
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
 
-    if (!jsonMatch) {
-      console.error('Failed to extract JSON from Claude response:', content);
-      return res.status(500).json({
-        error: 'Invalid response format from Claude',
-      });
+        if (!jsonMatch) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid response format from Claude' }),
+            {
+              status: 500,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            }
+          );
+        }
+
+        const parsed = JSON.parse(jsonMatch[0]);
+        const totalTokens = response.usage.input_tokens + response.usage.output_tokens;
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: parsed,
+            tokens: totalTokens,
+          }),
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+            },
+          }
+        );
+      } catch (error) {
+        console.error('Analysis error:', error);
+        return new Response(
+          JSON.stringify({
+            error: 'Claude API error',
+            details: error.message,
+          }),
+          {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          }
+        );
+      }
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    // Log token usage
-    const totalTokens =
-      response.usage.input_tokens + response.usage.output_tokens;
-    console.log(
-      `✓ Claude API: ${response.usage.input_tokens} input + ${response.usage.output_tokens} output = ${totalTokens} tokens`
+    // 404 for unknown routes
+    return new Response(
+      JSON.stringify({ error: 'Endpoint not found' }),
+      {
+        status: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
     );
-
-    res.json({
-      success: true,
-      data: parsed,
-      tokens: totalTokens,
-    });
-  } catch (error) {
-    console.error('API Error:', error);
-
-    // Provide specific error messages
-    if (error.status === 401) {
-      return res.status(401).json({
-        error: 'Authentication failed: Invalid API key',
-        details: error.message,
-      });
-    }
-
-    if (error.status === 429) {
-      return res.status(429).json({
-        error: 'Rate limited: Too many requests',
-        details: error.message,
-      });
-    }
-
-    res.status(500).json({
-      error: 'Claude API error',
-      details: error.message,
-    });
-  }
-});
-
-/**
- * UTILITY: Truncate text smartly
- */
-function truncateText(text, maxChars) {
-  if (text.length <= maxChars) return text;
-
-  // Keep first 40% (header/contact info) + last 60% (recent experience)
-  const firstPart = text.substring(0, Math.floor(maxChars * 0.4));
-  const lastPart = text.substring(text.length - Math.floor(maxChars * 0.6));
-
-  return (
-    firstPart +
-    '\n\n[... middle content abbreviated ...]\n\n' +
-    lastPart
-  );
-}
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
-});
-
-// Error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    details: process.env.NODE_ENV === 'development' ? err.message : undefined,
-  });
-});
-
-// Export for Cloudflare Workers
-export default {
-  fetch: app,
+  },
 };
