@@ -4,7 +4,9 @@
  * This is the proper architecture for browser-based apps
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// For production: use Cloudflare Workers backend
+// For development: fall back to localhost
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jobfitai-api.lavchary.workers.dev';
 
 /**
  * Call the backend API to analyze resume + job with Claude
