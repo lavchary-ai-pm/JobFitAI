@@ -243,7 +243,8 @@ Return ONLY valid JSON (no markdown, no extra text).`,
     }
 
     // If Claude didn't populate requiredEducation in jobAnalysis, use placeholder
-    if (!parsed.jobAnalysis.requiredEducation) {
+    // Handle both empty and "Not mentioned" as equivalent to missing
+    if (!parsed.jobAnalysis.requiredEducation || parsed.jobAnalysis.requiredEducation === 'Not mentioned') {
       parsed.jobAnalysis.requiredEducation = 'Not specified';
     }
 

@@ -1062,14 +1062,21 @@ Benefits:
       // Get Claude's intelligent analysis
       const claudeAnalysis = await analyzeWithClaude(resumeText, jobDescription);
 
-      // OVERRIDE: If Claude says "Not mentioned" but we extracted experience, use our extraction
+      // OVERRIDE: If Claude says "Not mentioned" OR returns empty/falsy value but we extracted experience, use our extraction
       console.log('🔍 Experience Debug:', {
         claudeResponse: claudeAnalysis.experienceMatch.yourExperience,
         preExtracted: preExtractedExperience,
-        willOverride: claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned' && preExtractedExperience
+        isFalsy: !claudeAnalysis.experienceMatch.yourExperience,
+        willOverride: (!claudeAnalysis.experienceMatch.yourExperience || claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned') && preExtractedExperience
       });
-      if (claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned' && preExtractedExperience) {
+      if ((!claudeAnalysis.experienceMatch.yourExperience || claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned') && preExtractedExperience) {
         console.log('✅ Overriding experience with:', preExtractedExperience);
+        claudeAnalysis.experienceMatch.yourExperience = preExtractedExperience;
+      }
+
+      // Fallback: if still no experience after override, use pre-extracted
+      if (!claudeAnalysis.experienceMatch.yourExperience && preExtractedExperience) {
+        console.log('✅ Fallback: Using pre-extracted experience:', preExtractedExperience);
         claudeAnalysis.experienceMatch.yourExperience = preExtractedExperience;
       }
 
@@ -1085,14 +1092,18 @@ Benefits:
       let experienceScore = claudeAnalysis.experienceMatch.score;
       let experienceExplanation = '';
 
-      if (claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned' ||
-          claudeAnalysis.experienceMatch.requiredExperience === 'Not specified') {
+      // Check if experience has actual data after override
+      const hasYourExperience = claudeAnalysis.experienceMatch.yourExperience &&
+                                claudeAnalysis.experienceMatch.yourExperience !== 'Not mentioned';
+      const hasRequiredExperience = claudeAnalysis.experienceMatch.requiredExperience &&
+                                    claudeAnalysis.experienceMatch.requiredExperience !== 'Not specified';
+
+      if (!hasYourExperience || !hasRequiredExperience) {
         // Either resume missing experience or job doesn't specify requirements - can't evaluate
         experienceScore = 0;
-        if (claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned' &&
-            claudeAnalysis.experienceMatch.requiredExperience === 'Not specified') {
+        if (!hasYourExperience && !hasRequiredExperience) {
           experienceExplanation = 'No experience information found in resume or job description. Add your experience details to resume and experience requirements to job description for accurate scoring.';
-        } else if (claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned') {
+        } else if (!hasYourExperience) {
           experienceExplanation = `Job requires ${claudeAnalysis.experienceMatch.requiredExperience}, but no experience found in your resume. Add your work experience details to strengthen your candidacy.`;
         } else {
           experienceExplanation = `Cannot accurately assess your experience match. The job description did not specify experience requirements. Please ensure the job description includes the required years of experience or experience level for accurate scoring.`;
@@ -1106,14 +1117,19 @@ Benefits:
       let educationScore = 0; // Default: No match unless we validate both have complete data
       let educationExplanation = '';
 
-      if (claudeAnalysis.resumeParsed.education === 'Not mentioned' ||
-          claudeAnalysis.jobAnalysis.requiredEducation === 'Not specified') {
+      // Handle both 'Not mentioned' and 'Not specified' as missing
+      const hasResumeEducation = claudeAnalysis.resumeParsed.education &&
+                                 claudeAnalysis.resumeParsed.education !== 'Not mentioned';
+      const hasRequiredEducation = claudeAnalysis.jobAnalysis.requiredEducation &&
+                                   claudeAnalysis.jobAnalysis.requiredEducation !== 'Not specified' &&
+                                   claudeAnalysis.jobAnalysis.requiredEducation !== 'Not mentioned';
+
+      if (!hasResumeEducation || !hasRequiredEducation) {
         // Either resume missing education or job doesn't specify requirements - can't evaluate
         educationScore = 0;
-        if (claudeAnalysis.resumeParsed.education === 'Not mentioned' &&
-            claudeAnalysis.jobAnalysis.requiredEducation === 'Not specified') {
+        if (!hasResumeEducation && !hasRequiredEducation) {
           educationExplanation = 'No education information found in resume or job description. Add your education details to resume and education requirements to job description for accurate scoring.';
-        } else if (claudeAnalysis.resumeParsed.education === 'Not mentioned') {
+        } else if (!hasResumeEducation) {
           educationExplanation = `Job requires ${claudeAnalysis.jobAnalysis.requiredEducation}, but no education found in your resume. Add your education details to strengthen your candidacy.`;
         } else {
           educationExplanation = `Cannot accurately assess your education match. The job description did not specify education requirements. Please ensure the job description includes the required education level for accurate scoring.`;
@@ -1125,7 +1141,7 @@ Benefits:
         const requiredEdu = (claudeAnalysis.jobAnalysis.requiredEducation || '').toLowerCase();
 
         // If job doesn't specify education requirement, still show resume education but indicate it's not evaluated
-        if (claudeAnalysis.jobAnalysis.requiredEducation === 'Not specified') {
+        if (!hasRequiredEducation || claudeAnalysis.jobAnalysis.requiredEducation === 'Not specified' || claudeAnalysis.jobAnalysis.requiredEducation === 'Not mentioned') {
           educationScore = 0;
           educationExplanation = 'Job description does not specify education requirements. Your education (' + claudeAnalysis.resumeParsed.education + ') cannot be evaluated against job requirements. Add education requirements to job description for accurate assessment.';
         } else {
