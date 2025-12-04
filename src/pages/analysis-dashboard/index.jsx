@@ -1070,15 +1070,26 @@ Benefits:
         const resumeEdu = (claudeAnalysis.resumeParsed.education || '').toLowerCase();
         const requiredEdu = (claudeAnalysis.jobAnalysis.requiredEducation || '').toLowerCase();
 
-        // Check for common degree levels
+        // Check for common degree levels - hierarchically ranked
+        // Master's and PhD meet all bachelor requirements
+        // Bachelor's meets bachelor requirements
+        // Associate meets associate and high school
+        const resumeHasMaster = resumeEdu.includes('master') || resumeEdu.includes('mba') || resumeEdu.includes('mba');
+        const resumeHasPhd = resumeEdu.includes('phd') || resumeEdu.includes('doctorate');
+        const resumeHasBachelor = resumeEdu.includes('bachelor') || resumeEdu.includes(' bs') || resumeEdu.includes(' ba');
+        const resumeHasAssociate = resumeEdu.includes('associate');
+
+        const requiredMaster = requiredEdu.includes('master') || requiredEdu.includes('mba');
+        const requiredPhd = requiredEdu.includes('phd') || requiredEdu.includes('doctorate');
+        const requiredBachelor = requiredEdu.includes('bachelor');
+        const requiredAssociate = requiredEdu.includes('associate');
+
         const degreeMatch =
-          (resumeEdu.includes('master') && requiredEdu.includes('bachelor')) ||
-          (resumeEdu.includes('master') && requiredEdu.includes('master')) ||
-          (resumeEdu.includes('master') && !requiredEdu.includes('phd')) ||
-          (resumeEdu.includes('bachelor') && requiredEdu.includes('bachelor')) ||
-          (resumeEdu.includes('phd') && (requiredEdu.includes('bachelor') || requiredEdu.includes('master'))) ||
-          (resumeEdu.includes('associate') && (requiredEdu.includes('high school') || requiredEdu.includes('associate'))) ||
-          resumeEdu.includes(requiredEdu.split(' ').find(word => word.length > 3) || '');
+          (resumeHasMaster && !requiredPhd) || // Master's meets everything except PhD
+          (resumeHasPhd) || // PhD meets everything
+          (resumeHasBachelor && requiredBachelor) || // Bachelor meets Bachelor
+          (resumeHasBachelor && requiredAssociate) || // Bachelor exceeds Associate
+          (resumeHasAssociate && requiredAssociate); // Associate meets Associate
 
         if (degreeMatch) {
           educationScore = 100;
