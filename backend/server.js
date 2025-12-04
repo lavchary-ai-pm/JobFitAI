@@ -130,11 +130,11 @@ CRITICAL REQUIREMENTS:
 1. For location: Extract the EXACT location from the resume (e.g., "Whitehouse Station, NJ" not just "NJ")
 2. For skills: List ALL matched skills and ALL missing skills separately
 3. For keywords: List ALL matched keywords and ALL missing keywords separately
-4. For experience:
-   - Extract ACTUAL years and role from resume by adding up years from all roles (e.g., "8 years as Senior Developer")
-   - Extract ACTUAL years requirement from job description (e.g., "5+ years required")
-   - If years not specified in job description, set requiredExperience to "Not specified"
-   - If years not in resume, set yourExperience to "Not mentioned"
+4. For experience - VERY IMPORTANT:
+   - yourExperience: Extract the FULL experience description from resume including years and roles (e.g., "10+ years as Product Manager (2013-2025)" or "12 years as Senior Frontend Developer"). Look for date ranges, job titles, and year mentions.
+   - requiredExperience: Extract from job description (e.g., "5+ years required"). If not found, set to "Not specified"
+   - If you cannot find ANY experience information in the resume, ONLY then set yourExperience to "Not mentioned"
+   - Check dates like "2013-2025", "2013-present", and add up years across roles
 5. For education:
    - Extract education from resume (e.g., "Bachelor's in Computer Science")
    - Extract required education from job description (e.g., "Bachelor's required")
@@ -163,12 +163,40 @@ Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
     const parsed = JSON.parse(jsonMatch[0]);
 
     // Fallback logic: Populate missing experience and education fields
-    // If Claude didn't populate yourExperience, construct it from resumeParsed data
+    // If Claude didn't populate yourExperience, extract it from resume text directly
     if (!parsed.experienceMatch.yourExperience || parsed.experienceMatch.yourExperience === 'Not mentioned') {
-      if (parsed.resumeParsed.yearsExperience && parsed.resumeParsed.mainRole) {
-        parsed.experienceMatch.yourExperience = `${parsed.resumeParsed.yearsExperience} years as ${parsed.resumeParsed.mainRole}`;
-      } else if (parsed.resumeParsed.yearsExperience) {
-        parsed.experienceMatch.yourExperience = `${parsed.resumeParsed.yearsExperience} years experience`;
+      // Try to extract experience from resume text
+      const resumeLower = truncatedResume.toLowerCase();
+
+      // Pattern 1: Look for "X+ years as [Role]" or "X years of [Role]"
+      const yearsRoleMatch = truncatedResume.match(/(\d+)\+?\s*years?\s*(?:as|of|in|serving\s+as)\s*([a-zA-Z\s]+?)(?:\(|,|;|-|$)/i);
+      if (yearsRoleMatch) {
+        const years = yearsRoleMatch[1];
+        const role = yearsRoleMatch[2].trim();
+        parsed.experienceMatch.yourExperience = `${years}+ years as ${role}`;
+      }
+      // Pattern 2: Look for date ranges like "2013-2025" with role titles
+      else {
+        const dateRangeMatch = truncatedResume.match(/([A-Z][a-z]+\s+[A-Z][a-z]+.*?)\s*\((\d{4})\s*[-–—]\s*(\d{4}|present|current)/i);
+        if (dateRangeMatch) {
+          const role = dateRangeMatch[1].trim();
+          const startYear = parseInt(dateRangeMatch[2]);
+          const endYear = dateRangeMatch[3].toLowerCase() === 'present' || dateRangeMatch[3].toLowerCase() === 'current'
+            ? new Date().getFullYear()
+            : parseInt(dateRangeMatch[3]);
+          const years = Math.max(1, endYear - startYear);
+          parsed.experienceMatch.yourExperience = `${years}+ years as ${role} (${startYear}-${dateRangeMatch[3]})`;
+        }
+      }
+
+      // Final fallback: use Claude's parsed yearsExperience and mainRole
+      if ((!parsed.experienceMatch.yourExperience || parsed.experienceMatch.yourExperience === 'Not mentioned') &&
+          (parsed.resumeParsed.yearsExperience || parsed.resumeParsed.mainRole)) {
+        if (parsed.resumeParsed.yearsExperience && parsed.resumeParsed.mainRole) {
+          parsed.experienceMatch.yourExperience = `${parsed.resumeParsed.yearsExperience} years as ${parsed.resumeParsed.mainRole}`;
+        } else if (parsed.resumeParsed.yearsExperience) {
+          parsed.experienceMatch.yourExperience = `${parsed.resumeParsed.yearsExperience} years experience`;
+        }
       }
     }
 
