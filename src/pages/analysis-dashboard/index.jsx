@@ -368,14 +368,25 @@ Benefits:
     // Calculate score
     const totalRequired = uniqueJobSkills?.length;
     const matchCount = matching?.length;
-    let score = totalRequired > 0 ? matchCount / totalRequired * 100 : 75;
+
+    // If no skills found in job description, return 0 with explanation
+    let score = 0;
+    let missingDataAlert = null;
+
+    if (totalRequired === 0) {
+      score = 0;
+      missingDataAlert = 'The job description doesn\'t list specific skills. Add skill requirements to your job description for accurate scoring.';
+    } else if (totalRequired > 0) {
+      score = matchCount / totalRequired * 100;
+    }
 
     return {
       matching,
       missing,
       totalRequired,
       matchCount,
-      score
+      score,
+      missingDataAlert
     };
   };
 
@@ -579,20 +590,42 @@ Benefits:
       return stateMap?.[state] || state;
     });
 
-    // City detection - enhanced to capture more cities including San Francisco
-    const cityPattern = /(san francisco|los angeles|new york|boston|chicago|houston|dallas|austin|seattle|denver|atlanta|miami|philadelphia|phoenix|san diego|san jose|portland|las vegas|detroit|charlotte|fort worth|memphis|baltimore|milwaukee|nashville|sacramento|kansas city|minneapolis|sf|la|nyc)/i;
-    const cityMatch = text?.match(cityPattern);
-    let detectedCity = cityMatch ? cityMatch?.[0] : null;
+    // City detection - enhanced with multi-word city support
+    // IMPORTANT: Check longer city names FIRST (like "Whitehouse Station", "San Francisco")
+    // before checking abbreviations (like "la", "sf") to avoid false matches
+    const cityPatterns = [
+      // Multi-word cities first (most specific)
+      { pattern: /\bwhitehouse station\b/i, name: 'Whitehouse Station' },
+      { pattern: /\bsan francisco\b/i, name: 'San Francisco' },
+      { pattern: /\blos angeles\b/i, name: 'Los Angeles' },
+      { pattern: /\bnew york\b/i, name: 'New York' },
+      { pattern: /\bsan diego\b/i, name: 'San Diego' },
+      { pattern: /\bsan jose\b/i, name: 'San Jose' },
+      { pattern: /\bsan antonio\b/i, name: 'San Antonio' },
+      { pattern: /\bfort worth\b/i, name: 'Fort Worth' },
+      { pattern: /\bkansas city\b/i, name: 'Kansas City' },
+      { pattern: /\blas vegas\b/i, name: 'Las Vegas' },
+      // Single-word cities
+      { pattern: /\b(boston|chicago|houston|dallas|austin|seattle|denver|atlanta|miami|philadelphia|phoenix|portland|detroit|charlotte|memphis|baltimore|milwaukee|nashville|sacramento|minneapolis)\b/i, name: null },
+      // Abbreviations last (least specific)
+      { pattern: /\bsf\b/i, name: 'San Francisco' },
+      { pattern: /\bla\b/i, name: 'Los Angeles' },
+      { pattern: /\bnyc\b/i, name: 'New York' }
+    ];
 
-    // Normalize city abbreviations
-    if (detectedCity) {
-      const cityMap = {
-        'sf': 'San Francisco',
-        'la': 'Los Angeles',
-        'nyc': 'New York'
-      };
-      const normalized = cityMap?.[detectedCity?.toLowerCase()];
-      if (normalized) detectedCity = normalized;
+    let detectedCity = null;
+    for (let i = 0; i < cityPatterns.length; i++) {
+      const cityMatch = text?.match(cityPatterns[i].pattern);
+      if (cityMatch) {
+        // If name is provided, use it; otherwise capitalize the matched text
+        if (cityPatterns[i].name) {
+          detectedCity = cityPatterns[i].name;
+        } else {
+          // Capitalize matched city name (e.g., "boston" -> "Boston")
+          detectedCity = cityMatch?.[0]?.split(' ')?.map(word => word?.charAt(0)?.toUpperCase() + word?.slice(1)?.toLowerCase())?.join(' ');
+        }
+        break; // Found a city, stop searching
+      }
     }
 
     return {
@@ -723,13 +756,14 @@ Benefits:
       return { score, reason, matchedKeywords, totalKeywords };
     }
 
-    // RULE 3: If job is hybrid → 40%
-    if (jobLocation?.isHybrid && !jobLocation?.explicitlyNotRemote) {
-      score = 40;
+    // RULE 3: If job is hybrid but NO office location specified → 0% (cannot determine match)
+    if (jobLocation?.isHybrid && !jobLocation?.hasLocationInfo) {
+      score = 0;
       matchedKeywords = 0;
-      reason = `Job is hybrid. Your location: ${candidateLocation}. Job location: ${jobLocationStr}. Hybrid role with location mismatch.`;
+      reason = `Job is hybrid but the office location is not clearly specified. Please ensure the job description specifies the office location so we can match it with your location (${candidateLocation}).`;
       return { score, reason, matchedKeywords, totalKeywords };
     }
+    // If hybrid job HAS a location, treat it like an on-site job for location matching purposes
 
     // RULE 4: If candidate explicitly states "open to relocation" → 85%
     if (isRelocatable) {
@@ -739,26 +773,34 @@ Benefits:
       return { score, reason, matchedKeywords, totalKeywords };
     }
 
-    // RULE 5: Different location with NO relocation signal → 40%
+    // RULE 5: Different location with NO relocation signal → 0% (cannot work there)
     if (resumeLocation?.hasLocationInfo && jobLocation?.hasLocationInfo) {
-      score = 40;
+      score = 0;
       matchedKeywords = 0;
-      reason = `Your location (${candidateLocation}) differs from job location (${jobLocationStr}). No relocation signal found. Score: 40%.`;
+      reason = `Your location (${candidateLocation}) differs from job location (${jobLocationStr}). You have not indicated willingness to relocate. Score: 0%.`;
       return { score, reason, matchedKeywords, totalKeywords };
     }
 
-    // FALLBACK: Missing location info
-    if (!resumeLocation?.hasLocationInfo || !jobLocation?.hasLocationInfo) {
-      score = 50;
+    // RULE 6: Missing job location → 0% (cannot score without job location)
+    if (!jobLocation?.hasLocationInfo) {
+      score = 0;
       matchedKeywords = 0;
-      reason = `Location information incomplete. Your location: ${candidateLocation}. Job location: ${jobLocationStr}. Score: 50%.`;
+      reason = `Job location is not specified. Please ensure the job description includes a location so we can accurately match it with your location (${candidateLocation}).`;
+      return { score, reason, matchedKeywords, totalKeywords };
+    }
+
+    // RULE 7: Missing resume location → 0% (cannot score without candidate location)
+    if (!resumeLocation?.hasLocationInfo) {
+      score = 0;
+      matchedKeywords = 0;
+      reason = `Your location is not specified in resume. Please add your location so we can match it with the job location (${jobLocationStr}).`;
       return { score, reason, matchedKeywords, totalKeywords };
     }
 
     // Default fallback
-    score = 50;
+    score = 0;
     matchedKeywords = 0;
-    reason = `Could not determine location match. Your location: ${candidateLocation}. Job location: ${jobLocationStr}. Score: 50%.`;
+    reason = `Location information incomplete. Unable to score location match.`;
     return { score, reason, matchedKeywords, totalKeywords };
   };
 
@@ -802,8 +844,15 @@ Benefits:
     // Keywords analysis
     const jobKeywords = extractKeywordsFromJob(jobDescription);
     const keywordAnalysis = analyzeKeywordMatches(jobKeywords, resumeText);
-    const keywordsScore = jobKeywords?.length > 0 ?
-    keywordAnalysis?.present?.length / jobKeywords?.length * 100 : 75;
+    let keywordsScore = 0;
+    let keywordsMissingDataAlert = null;
+
+    if (jobKeywords?.length === 0) {
+      keywordsScore = 0;
+      keywordsMissingDataAlert = 'The job description doesn\'t have clear keywords. Add more detail to improve keyword analysis.';
+    } else {
+      keywordsScore = keywordAnalysis?.present?.length / jobKeywords?.length * 100;
+    }
 
     // FIXED: Education analysis - Compare education LEVELS, not counts
     const getEducationLevel = (text) => {
@@ -848,18 +897,22 @@ Benefits:
     let educationScore = 80; // Default score if no education info
     let educationExplanation = '';
 
+    let educationMissingDataAlert = null;
+
     if (jobEducation?.level === -1 && resumeEducation?.level === -1) {
       // Neither job nor resume mention education
-      educationScore = 80;
-      educationExplanation = 'No education requirements specified in job description';
+      educationScore = 0;
+      educationExplanation = 'No education mentioned';
+      educationMissingDataAlert = 'Add your education details to your resume and education requirements to the job description for accurate scoring.';
     } else if (jobEducation?.level === -1 && resumeEducation?.level >= 0) {
       // Job doesn't require education but candidate has some
       educationScore = 100;
       educationExplanation = `Your education (${resumeEducation?.name}) exceeds the requirements (no specific education required)`;
     } else if (jobEducation?.level >= 0 && resumeEducation?.level === -1) {
       // Job requires education but candidate doesn't mention any
-      educationScore = 40;
+      educationScore = 0;
       educationExplanation = `Job requires ${jobEducation?.name} but no education found in resume`;
+      educationMissingDataAlert = `Add your education details to your resume. Job requires at least ${jobEducation?.name}.`;
     } else if (resumeEducation?.level >= jobEducation?.level) {
       // Candidate's education level meets or exceeds job requirement
       educationScore = 100;
@@ -887,8 +940,15 @@ Benefits:
       educationScore * 0.10
     );
 
+    // Collect all missing data alerts to show user
+    const missingDataAlerts = [];
+    if (skillsAnalysis?.missingDataAlert) missingDataAlerts.push(skillsAnalysis.missingDataAlert);
+    if (keywordsMissingDataAlert) missingDataAlerts.push(keywordsMissingDataAlert);
+    if (educationMissingDataAlert) missingDataAlerts.push(educationMissingDataAlert);
+
     return {
       overallScore,
+      missingDataAlerts: missingDataAlerts.length > 0 ? missingDataAlerts : null,
       factors: [
       {
         name: 'Skills Match',
@@ -897,7 +957,7 @@ Benefits:
         color: 'var(--color-primary)',
         matchedKeywords: skillsAnalysis?.matchCount,
         totalKeywords: skillsAnalysis?.totalRequired,
-        explanation: `WHY: Found ${skillsAnalysis?.matchCount} of ${skillsAnalysis?.totalRequired} required skills. Matched: ${skillsAnalysis?.matching?.slice(0, 5)?.join(', ') || 'none'}. ${skillsAnalysis?.missing?.length > 0 ? `Missing: ${skillsAnalysis?.missing?.slice(0, 3)?.join(', ')} - consider adding these to strengthen your profile` : 'Great skill coverage!'}`
+        explanation: `WHY: ${skillsAnalysis?.totalRequired === 0 ? 'No specific skills mentioned in job description. ' + (skillsAnalysis?.missingDataAlert || '') : `Found ${skillsAnalysis?.matchCount} of ${skillsAnalysis?.totalRequired} required skills. Matched: ${skillsAnalysis?.matching?.slice(0, 5)?.join(', ') || 'none'}. ${skillsAnalysis?.missing?.length > 0 ? `Missing: ${skillsAnalysis?.missing?.slice(0, 3)?.join(', ')} - consider adding these to strengthen your profile` : 'Great skill coverage!'}`}`
       },
       {
         name: 'Experience Level',
@@ -924,7 +984,7 @@ Benefits:
         color: 'var(--color-muted-foreground)',
         matchedKeywords: keywordAnalysis?.present?.length,
         totalKeywords: jobKeywords?.length,
-        explanation: `WHY: Found ${keywordAnalysis?.present?.length} of ${jobKeywords?.length} job keywords. Present: ${keywordAnalysis?.present?.slice(0, 4)?.join(', ') || 'few'}. ${keywordAnalysis?.missing?.length > 0 ? `Missing keywords (add these): ${keywordAnalysis?.missing?.slice(0, 3)?.join(', ')}` : 'Excellent keyword coverage!'}`
+        explanation: `WHY: ${jobKeywords?.length === 0 ? 'No clear keywords in job description. ' + (keywordsMissingDataAlert || '') : `Found ${keywordAnalysis?.present?.length} of ${jobKeywords?.length} job keywords. Present: ${keywordAnalysis?.present?.slice(0, 4)?.join(', ') || 'few'}. ${keywordAnalysis?.missing?.length > 0 ? `Missing keywords (add these): ${keywordAnalysis?.missing?.slice(0, 3)?.join(', ')}` : 'Excellent keyword coverage!'}`}`
       },
       {
         name: 'Education',
@@ -933,7 +993,7 @@ Benefits:
         color: 'var(--color-success)',
         matchedKeywords: resumeEducation?.level >= jobEducation?.level ? 1 : 0,
         totalKeywords: jobEducation?.level >= 0 ? 1 : 1,
-        explanation: `WHY: ${educationExplanation}`
+        explanation: `WHY: ${educationExplanation}${educationMissingDataAlert ? ' ' + educationMissingDataAlert : ''}`
       }],
 
       extractedRole: extractRoleFromJobDescription(jobDescription),
@@ -964,11 +1024,71 @@ Benefits:
       const jobLocationInfo = extractLocationInfo(jobDescription);
       const locationScore = calculateLocationScore(locationInfo, jobLocationInfo);
 
-      const educationScore = calculateEducationScore(resumeText, jobDescription);
-
       // Use Claude's scores for complex analysis
       const skillsScore = claudeAnalysis.skillMatch.matchScore;
-      const experienceScore = claudeAnalysis.experienceMatch.score;
+
+      // Experience score: Return 0% if missing from resume or job description
+      let experienceScore = claudeAnalysis.experienceMatch.score;
+      let experienceExplanation = '';
+
+      if (claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned' ||
+          claudeAnalysis.experienceMatch.requiredExperience === 'Not specified') {
+        // Either resume missing experience or job doesn't specify requirements - can't evaluate
+        experienceScore = 0;
+        if (claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned' &&
+            claudeAnalysis.experienceMatch.requiredExperience === 'Not specified') {
+          experienceExplanation = 'No experience information found in resume or job description. Add your experience details to resume and experience requirements to job description for accurate scoring.';
+        } else if (claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned') {
+          experienceExplanation = `Job requires ${claudeAnalysis.experienceMatch.requiredExperience}, but no experience found in your resume. Add your work experience details to strengthen your candidacy.`;
+        } else {
+          experienceExplanation = `Cannot accurately assess your experience match. The job description did not specify experience requirements. Please ensure the job description includes the required years of experience or experience level for accurate scoring.`;
+        }
+      } else {
+        // Both have experience mentioned - use Claude's analysis
+        experienceExplanation = claudeAnalysis.experienceMatch.explanation;
+      }
+
+      // Education score: Return 0% if missing from resume or job description
+      let educationScore = 100; // Default: assume match if both provided
+      let educationExplanation = '';
+
+      if (claudeAnalysis.resumeParsed.education === 'Not mentioned' ||
+          claudeAnalysis.jobAnalysis.requiredEducation === 'Not specified') {
+        // Either resume missing education or job doesn't specify requirements - can't evaluate
+        educationScore = 0;
+        if (claudeAnalysis.resumeParsed.education === 'Not mentioned' &&
+            claudeAnalysis.jobAnalysis.requiredEducation === 'Not specified') {
+          educationExplanation = 'No education information found in resume or job description. Add your education details to resume and education requirements to job description for accurate scoring.';
+        } else if (claudeAnalysis.resumeParsed.education === 'Not mentioned') {
+          educationExplanation = `Job requires ${claudeAnalysis.jobAnalysis.requiredEducation}, but no education found in your resume. Add your education details to strengthen your candidacy.`;
+        } else {
+          educationExplanation = `Cannot accurately assess your education match. The job description did not specify education requirements. Please ensure the job description includes the required education level for accurate scoring.`;
+        }
+      } else {
+        // Both have education mentioned - check if they match
+        // Simple heuristic: if resume education contains keywords from required education, it matches
+        const resumeEdu = (claudeAnalysis.resumeParsed.education || '').toLowerCase();
+        const requiredEdu = (claudeAnalysis.jobAnalysis.requiredEducation || '').toLowerCase();
+
+        // Check for common degree levels
+        const degreeMatch =
+          (resumeEdu.includes('master') && requiredEdu.includes('bachelor')) ||
+          (resumeEdu.includes('master') && requiredEdu.includes('master')) ||
+          (resumeEdu.includes('master') && !requiredEdu.includes('phd')) ||
+          (resumeEdu.includes('bachelor') && requiredEdu.includes('bachelor')) ||
+          (resumeEdu.includes('phd') && (requiredEdu.includes('bachelor') || requiredEdu.includes('master'))) ||
+          (resumeEdu.includes('associate') && (requiredEdu.includes('high school') || requiredEdu.includes('associate'))) ||
+          resumeEdu.includes(requiredEdu.split(' ').find(word => word.length > 3) || '');
+
+        if (degreeMatch) {
+          educationScore = 100;
+          educationExplanation = `Your education (${claudeAnalysis.resumeParsed.education}) meets or exceeds the job requirements (${claudeAnalysis.jobAnalysis.requiredEducation}).`;
+        } else {
+          educationScore = 40;
+          educationExplanation = `Your education (${claudeAnalysis.resumeParsed.education}) may not fully meet the job requirements (${claudeAnalysis.jobAnalysis.requiredEducation}). Consider highlighting relevant coursework or certifications.`;
+        }
+      }
+
       // CRITICAL: Use our validated location scoring logic, not Claude's
       const locationFinalScore = locationScore.score;
 
@@ -1044,9 +1164,11 @@ Benefits:
             color: 'var(--color-primary)',
             matchedKeywords: claudeAnalysis.skillMatch.matched.length,
             totalKeywords: claudeAnalysis.skillMatch.matched.length + claudeAnalysis.skillMatch.missing.length,
-            explanation: `✓ MATCHED SKILLS (${claudeAnalysis.skillMatch.matched.length}): ${claudeAnalysis.skillMatch.matched.join(', ') || 'none'}
-${claudeAnalysis.skillMatch.missing.length > 0 ? `✗ MISSING SKILLS (${claudeAnalysis.skillMatch.missing.length}): ${claudeAnalysis.skillMatch.missing.join(', ')}` : ''}
-${claudeAnalysis.skillMatch.transferable.length > 0 ? `➜ TRANSFERABLE SKILLS (${claudeAnalysis.skillMatch.transferable.length}): ${claudeAnalysis.skillMatch.transferable.join(', ')}` : ''}`
+            explanation: `[YOURS]Skills Matched:[/YOURS] ${claudeAnalysis.skillMatch.matched.join(', ') || 'None from job requirements'}
+
+[JOB]Missing Skills:[/JOB] ${claudeAnalysis.skillMatch.missing.join(', ') || 'None - Perfect match!'}
+
+[WHY]Reason for Score:[/WHY] ${claudeAnalysis.skillMatch.missing.length > 0 ? `You have matched ${claudeAnalysis.skillMatch.matched.length} of ${claudeAnalysis.skillMatch.matched.length + claudeAnalysis.skillMatch.missing.length} required skills.${claudeAnalysis.skillMatch.transferable.length > 0 ? ` You also have these transferable skills: ${claudeAnalysis.skillMatch.transferable.join(', ')}.` : ''}` : `Perfect match! You have all ${claudeAnalysis.skillMatch.matched.length} required skills.${claudeAnalysis.skillMatch.transferable.length > 0 ? ` Plus these additional skills: ${claudeAnalysis.skillMatch.transferable.join(', ')}.` : ''}`}`
           },
           {
             name: 'Experience Level',
@@ -1055,7 +1177,7 @@ ${claudeAnalysis.skillMatch.transferable.length > 0 ? `➜ TRANSFERABLE SKILLS (
             color: 'var(--color-accent)',
             matchedKeywords: 1,
             totalKeywords: 1,
-            explanation: `WHY: ${claudeAnalysis.experienceMatch.explanation}`
+            explanation: `[YOURS]Your Experience:[/YOURS] ${claudeAnalysis.experienceMatch.yourExperience || 'Not mentioned'}\n\n[JOB]Required Experience:[/JOB] ${claudeAnalysis.experienceMatch.requiredExperience || 'Not specified'}\n\n[WHY]Reason for Score:[/WHY] ${experienceExplanation}`
           },
           {
             name: 'Location Match',
@@ -1064,16 +1186,17 @@ ${claudeAnalysis.skillMatch.transferable.length > 0 ? `➜ TRANSFERABLE SKILLS (
             color: 'var(--color-warning)',
             matchedKeywords: locationFinalScore >= 80 ? 1 : 0,
             totalKeywords: 1,
-            explanation: `EXTRACTED LOCATIONS:
-Your Location: ${claudeAnalysis.resumeParsed.location || locationInfo.formattedLocation || 'Not specified in resume'}
-Job Location: ${claudeAnalysis.jobAnalysis.location || jobLocationInfo.formattedLocation || 'Not specified'}
+            explanation: `${(() => {
+              const yourLocation = locationInfo.formattedLocation || 'Not specified in resume';
+              const jobLocation = jobLocationInfo.formattedLocation || claudeAnalysis.jobAnalysis.location || 'Not specified';
+              const hasJobLocation = jobLocationInfo.hasLocationInfo || claudeAnalysis.jobAnalysis.location;
 
-WORK ARRANGEMENT:
-Your Preference: ${locationInfo.isRemote ? 'Remote' : locationInfo.isHybrid ? 'Hybrid' : 'On-site'}
-Job Type: ${jobLocationInfo.isRemote ? 'Remote' : jobLocationInfo.isHybrid ? 'Hybrid' : 'On-site'}
+              if (!hasJobLocation) {
+                return `[YOURS]Your Location:[/YOURS] ${yourLocation}\n\n[JOB]Job Location:[/JOB] Not specified\n\n[WHY]Reason for Score:[/WHY] ⚠️ Job location not specified in job description. Please ensure the job description includes a location for accurate matching.`;
+              }
 
-SCORING REASON:
-${locationScore.reason}`
+              return `[YOURS]Your Location:[/YOURS] ${yourLocation}\n\n[JOB]Job Location:[/JOB] ${jobLocation}\n\n[WHY]Reason for Score:[/WHY] ${locationScore.reason}`;
+            })()}`
           },
           {
             name: 'Keywords',
@@ -1082,8 +1205,11 @@ ${locationScore.reason}`
             color: 'var(--color-muted-foreground)',
             matchedKeywords: claudeAnalysis.keywordMatch?.matched?.length || 0,
             totalKeywords: (claudeAnalysis.keywordMatch?.matched?.length || 0) + (claudeAnalysis.keywordMatch?.missing?.length || 0),
-            explanation: `✓ FOUND KEYWORDS (${claudeAnalysis.keywordMatch?.matched?.length || 0}): ${claudeAnalysis.keywordMatch?.matched?.join(', ') || 'none'}
-${claudeAnalysis.keywordMatch?.missing?.length > 0 ? `✗ MISSING KEYWORDS (${claudeAnalysis.keywordMatch?.missing?.length}): ${claudeAnalysis.keywordMatch?.missing?.join(', ')}` : 'Perfect keyword coverage!'}`
+            explanation: `[YOURS]Found Keywords:[/YOURS] ${claudeAnalysis.keywordMatch?.matched?.join(', ') || 'None from job keywords'}
+
+[JOB]Missing Keywords:[/JOB] ${claudeAnalysis.keywordMatch?.missing?.join(', ') || 'None - Perfect match!'}
+
+[WHY]Reason for Score:[/WHY] ${claudeAnalysis.keywordMatch?.missing?.length > 0 ? `You have matched ${claudeAnalysis.keywordMatch?.matched?.length || 0} of ${(claudeAnalysis.keywordMatch?.matched?.length || 0) + (claudeAnalysis.keywordMatch?.missing?.length || 0)} keywords from the job description.` : `Perfect keyword coverage! You have all ${claudeAnalysis.keywordMatch?.matched?.length || 0} keywords from the job description.`}`
           },
           {
             name: 'Education',
@@ -1092,7 +1218,7 @@ ${claudeAnalysis.keywordMatch?.missing?.length > 0 ? `✗ MISSING KEYWORDS (${cl
             color: 'var(--color-success)',
             matchedKeywords: 1,
             totalKeywords: 1,
-            explanation: `Education requirement: ${claudeAnalysis.jobAnalysis.requiredEducation || 'Not specified'}. Your background: ${claudeAnalysis.resumeParsed.education || 'Not mentioned'}`
+            explanation: `[YOURS]Your Education:[/YOURS] ${claudeAnalysis.resumeParsed.education || 'Not mentioned'}\n\n[JOB]Required Education:[/JOB] ${claudeAnalysis.jobAnalysis.requiredEducation || 'Not specified'}\n\n[WHY]Reason for Score:[/WHY] ${educationExplanation}`
           }
         ],
         extractedRole: extractRoleFromJobDescription(jobDescription),
@@ -1145,14 +1271,14 @@ ${claudeAnalysis.keywordMatch?.missing?.length > 0 ? `✗ MISSING KEYWORDS (${cl
       <HeaderNav />
       
       <main className="main-content">
-        <div className="max-w-screen-2xl mx-auto py-8">
-          <div className="mb-8">
+        <div className="max-w-screen-2xl mx-auto py-6">
+          <div className="mb-3">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Perfect Job Match
+                <h1 className="text-3xl font-bold text-foreground mb-1">Find Your Perfect Job Match
 
                 </h1>
-                <p className="text-muted-foreground">Discover skill gaps and get actionable advice before applying
+                <p className="text-muted-foreground text-sm">Discover skill gaps and get actionable advice before applying
 
                 </p>
               </div>
@@ -1169,16 +1295,11 @@ ${claudeAnalysis.keywordMatch?.missing?.length > 0 ? `✗ MISSING KEYWORDS (${cl
           </div>
 
           {/* Privacy Notice Banner */}
-          <div className="mb-8 p-4 bg-blue/5 border border-blue/20 rounded-lg flex items-start gap-3">
-            <Icon name="Shield" size={20} color="var(--color-primary)" className="mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-foreground mb-1">
-                Your privacy is protected
-              </p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                We do not store, save, or retain any of your personal data, resume information, or job descriptions. All analysis is performed locally in your browser. Your data is never sent to our servers and is deleted immediately when you leave this page.
-              </p>
-            </div>
+          <div className="mb-4 p-3 bg-blue/5 border border-blue/20 rounded-lg flex items-center gap-2">
+            <Icon name="Shield" size={16} color="var(--color-primary)" className="flex-shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              Your privacy is protected. All analysis runs locally in your browser—your data is never stored.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

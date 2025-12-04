@@ -35,6 +35,21 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
 
     const fileName = file?.name?.toLowerCase() || '';
 
+    // Validate file size (5MB max)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      alert('File is too large. Maximum file size is 5MB. Please use a smaller file.');
+      return;
+    }
+
+    // Validate file type
+    const supportedTypes = ['.pdf', '.docx', '.doc', '.txt'];
+    const hasValidExtension = supportedTypes.some(type => fileName.endsWith(type));
+    if (!hasValidExtension) {
+      alert('Unsupported file format. Please upload a PDF, DOCX, DOC, or TXT file.');
+      return;
+    }
+
     try {
       let extractedText = '';
 
@@ -47,7 +62,9 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
       // Handle PDF files
       else if (fileName.endsWith('.pdf')) {
         const arrayBuffer = await file.arrayBuffer();
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        // Use local worker file from public folder instead of CDN
+        // This is more reliable and doesn't depend on external CDN availability
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const pages = [];
 
@@ -73,7 +90,7 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
 
       // Validate extracted text
       if (!extractedText || extractedText.trim().length === 0) {
-        alert('No text could be extracted from the file. Please check your file.');
+        alert('Unable to extract text from your file. The file may be empty, a scanned image without text, or in an unsupported format. Please try another file.');
         return;
       }
 
@@ -82,12 +99,63 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
       onResumeChange(extractedText);
     } catch (error) {
       console.error('File parsing error:', error);
-      alert(`Error reading file: ${error.message}. Please try another file.`);
+      console.error('Error message:', error?.message);
+      console.error('Error name:', error?.name);
+      console.error('Error stack:', error?.stack);
+      console.error('Full error object:', error);
+
+      let userMessage = '';
+      const errorMsg = error?.message?.toLowerCase() || '';
+      const errorName = error?.name?.toLowerCase() || '';
+
+      console.log('Debug info - errorMsg:', errorMsg);
+      console.log('Debug info - errorName:', errorName);
+      console.log('Debug info - fileName:', fileName);
+
+      // PDF-specific errors
+      if (fileName.endsWith('.pdf')) {
+        if (errorMsg.includes('worker') || errorMsg.includes('module') || errorMsg.includes('dynamic')) {
+          userMessage = 'PDF Reader Issue: Unable to load PDF reader. This is a temporary technical issue. Please:\n• Try refreshing the page (F5)\n• Wait a moment and try again\n• If the problem persists, try a different browser';
+        } else if (errorMsg.includes('invalid pdf') || errorMsg.includes('corrupted') || errorMsg.includes('unexpected end') || errorName.includes('parseerror')) {
+          userMessage = 'Invalid PDF File: This PDF file appears to be corrupted or not a valid PDF. Try:\n• Opening the file in Adobe Reader to verify it works\n• Re-saving the file and re-uploading\n• Converting to a different format (DOCX or TXT)';
+        } else if (errorMsg.includes('encrypted') || errorMsg.includes('password')) {
+          userMessage = 'Encrypted PDF: This PDF is password-protected or encrypted. Please:\n• Remove the password protection in Adobe Reader\n• Save an unencrypted copy\n• Upload the unencrypted version';
+        } else if (errorMsg.includes('timeout')) {
+          userMessage = 'PDF Processing Timeout: The PDF took too long to process. This usually means:\n• The file is very large (try a smaller PDF)\n• The PDF has many complex pages (try extracting key pages)\n• There is a temporary network issue (try again in a moment)';
+        } else {
+          userMessage = 'PDF Reading Error: Unable to process this PDF. Common fixes:\n• Try converting the PDF to a different format (DOCX)\n• Ensure the PDF is not a scanned image without text\n• Try re-saving the PDF in Adobe Reader\n• Use a simpler PDF file format (not a form or interactive PDF)';
+        }
+      }
+      // DOCX-specific errors
+      else if (fileName.endsWith('.docx')) {
+        if (errorMsg.includes('zip') || errorMsg.includes('archive')) {
+          userMessage = 'Corrupted DOCX File: The DOCX file appears to be corrupted. Try:\n• Opening in Microsoft Word to verify\n• Saving a fresh copy of the file\n• Using "Save As" to create a new copy\n• Converting to PDF or TXT format';
+        } else if (errorMsg.includes('xml')) {
+          userMessage = 'Invalid DOCX Format: The DOCX file has formatting issues. Try:\n• Opening in Microsoft Word and re-saving\n• Removing complex formatting (tables, images, special fonts)\n• Converting to plain text (TXT) or PDF format';
+        } else {
+          userMessage = 'DOCX Processing Error: Unable to read this DOCX file. Please:\n• Open the file in Microsoft Word to verify it works\n• Remove any complex formatting (embedded media, forms)\n• Save a simplified copy\n• Try uploading as a PDF or TXT file instead';
+        }
+      }
+      // TXT-specific errors
+      else if (fileName.endsWith('.txt')) {
+        if (errorMsg.includes('encoding')) {
+          userMessage = 'File Encoding Issue: The TXT file uses an unsupported character encoding. Please:\n• Open the file in Notepad\n• Use File > Save As and select UTF-8 encoding\n• Upload the re-saved file';
+        } else {
+          userMessage = 'TXT File Error: Unable to read this TXT file. Please verify the file is valid plain text and try again.';
+        }
+      }
+      // Generic fallback
+      else {
+        userMessage = 'File Processing Error: Unable to process your file. Please:\n• Ensure the file is in PDF, DOCX, DOC, or TXT format\n• Check that the file is not corrupted\n• Try a different file\n• Contact support if the problem persists';
+      }
+
+      alert(userMessage);
       setUploadedFileName(null);
     }
   };
 
   const handleFileSelect = (e) => {
+    e?.stopPropagation?.();
     const file = e?.target?.files?.[0];
     if (file) {
       handleFileUpload(file);
@@ -157,6 +225,7 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            onClick={() => fileInputRef?.current?.click()}
             className={`drop-zone ${isDragging ? 'active' : ''}`}
           >
             <input
@@ -175,7 +244,10 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
             </p>
             <Button
               variant="outline"
-              onClick={() => fileInputRef?.current?.click()}
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef?.current?.click();
+              }}
             >
               Select File
             </Button>

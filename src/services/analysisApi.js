@@ -20,6 +20,12 @@ export const analyzeWithClaude = async (resumeText, jobDescription) => {
   }
 
   try {
+    // Log request details for debugging cache issues
+    console.log('📤 Sending analysis request:');
+    console.log('  Resume length:', resumeText.length);
+    console.log('  Job description length:', jobDescription.length);
+    console.log('  First 100 chars of job:', jobDescription.substring(0, 100));
+
     const response = await fetch(`${API_BASE_URL}/api/analyze`, {
       method: 'POST',
       headers: {

@@ -4,7 +4,6 @@ import Icon from '../../../components/AppIcon';
 
 const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobDescription }) => {
   const [expandedFactor, setExpandedFactor] = useState(null);
-  const [copiedPitch, setCopiedPitch] = useState(false);
   const [displayScore, setDisplayScore] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -36,6 +35,37 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
       return () => clearInterval(interval);
     }
   }, [results?.overallScore]);
+
+  // Helper function to render explanation text with color coding
+  const renderExplanation = (text) => {
+    if (!text) return text;
+
+    const parts = text.split(/(\[YOURS\].*?\[\/YOURS\]|\[JOB\].*?\[\/JOB\]|\[WHY\].*?\[\/WHY\])/g);
+
+    return parts.map((part, idx) => {
+      if (part?.startsWith('[YOURS]')) {
+        const content = part.replace('[YOURS]', '').replace('[/YOURS]', '');
+        return <span key={idx} style={{ color: 'var(--color-primary)' }} className="font-bold">{content}</span>;
+      }
+      if (part?.startsWith('[JOB]')) {
+        const content = part.replace('[JOB]', '').replace('[/JOB]', '');
+        return <span key={idx} style={{ color: 'var(--color-accent)' }} className="font-bold">{content}</span>;
+      }
+      if (part?.startsWith('[WHY]')) {
+        const content = part.replace('[WHY]', '').replace('[/WHY]', '');
+        // Extract the label and content - format is "Label: content"
+        const [label, ...contentParts] = content.split(':');
+        const contentText = contentParts.join(':').trim();
+        return (
+          <span key={idx}>
+            <span style={{ color: '#ff6b35' }} className="font-bold">{label}:</span>
+            {' '}{contentText}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
 
   if (!results) {
     return (
@@ -329,7 +359,80 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
       };
     }
 
-    // ===== TIER 3: POOR FIT (<60%) - CAREER GUIDANCE =====
+    // ===== TIER 3: POOR FIT (<60%) - CHECK FOR MISSING DATA =====
+    // Detect which factors have 0% score (indicating missing data)
+    const missingDataFactors = factors?.filter(f => f?.score === 0)?.map(f => f?.name) || [];
+    const hasMissingData = missingDataFactors?.length > 0;
+
+    if (hasMissingData) {
+      // Determine whether RESUME or JOB DESCRIPTION is missing the data
+      const resumeLower = resumeText?.toLowerCase();
+      const jobLower = jobDescription?.toLowerCase();
+
+      const missingFromResume = [];
+      const missingFromJob = [];
+
+      missingDataFactors?.forEach(name => {
+        if (name === 'Experience Level') {
+          // Check if RESUME lacks years OR if JOB lacks requirement
+          const resumeHasYears = resumeLower?.match(/\b\d+\+?\s*years?\b/i);
+          const jobHasYears = jobLower?.match(/\b\d+\+?\s*years?\b/i);
+
+          if (!resumeHasYears && jobHasYears) {
+            // Resume missing but job has requirement
+            missingFromResume.push('experience years');
+          } else if (!jobHasYears) {
+            // Job missing requirement
+            missingFromJob.push('experience requirement');
+          }
+        } else if (name === 'Education Match') {
+          // Check if RESUME lacks education OR if JOB lacks requirement
+          const resumeHasEducation = resumeLower?.match(/\b(bachelor|master|phd|associate|degree|diploma)\b/i);
+          const jobHasEducation = jobLower?.match(/\b(bachelor|master|phd|associate|degree|diploma)\b/i);
+
+          if (!resumeHasEducation && jobHasEducation) {
+            // Resume missing but job has requirement
+            missingFromResume.push('education');
+          } else if (!jobHasEducation) {
+            // Job missing requirement
+            missingFromJob.push('education requirement');
+          }
+        } else if (name === 'Location Match') {
+          // Check if RESUME lacks location OR if JOB lacks location info
+          const resumeHasLocation = resumeLower?.match(/\b[a-z]{2}\b|city|location/i);
+          const jobHasLocation = jobLower?.match(/\b[a-z]{2}\b|city|location|remote/i);
+
+          if (!resumeHasLocation && jobHasLocation) {
+            // Resume missing but job has location
+            missingFromResume.push('location');
+          } else if (!jobHasLocation) {
+            // Job missing location info
+            missingFromJob.push('location information');
+          }
+        }
+      });
+
+      // Build appropriate message based on what's missing
+      if (missingFromResume.length > 0) {
+        const missingList = missingFromResume.join(', ');
+        return {
+          show: false,
+          reason: `Incomplete Analysis (${overallScore}% - Missing Resume Information)`,
+          gaps: [`Your resume is missing: ${missingList}`],
+          advice: `Add your ${missingList} details to your resume, then re-analyze for accurate matching.`
+        };
+      } else if (missingFromJob.length > 0) {
+        const missingList = missingFromJob.join(', ');
+        return {
+          show: false,
+          reason: `Incomplete Analysis (${overallScore}% - Incomplete Job Description)`,
+          gaps: [`The job description is missing: ${missingList}`],
+          advice: `The job description doesn't have enough detail for accurate analysis. Try adding more details to the job posting or analyze a more detailed job description.`
+        };
+      }
+    }
+
+    // Low score due to actual mismatch (not missing data)
     return {
       show: false,
       reason: `Not a strong fit (${overallScore}%). This appears to be a different career path.`,
@@ -362,31 +465,21 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
     return uniqueSkills;
   };
 
-  const handleCopyPitch = () => {
-    const pitchData = generateApplicationPitch();
-    if (pitchData?.show && pitchData?.pitch) {
-      navigator.clipboard?.writeText(pitchData?.pitch)?.then(() => {
-        setCopiedPitch(true);
-        setTimeout(() => setCopiedPitch(false), 2000);
-      });
-    }
-  };
-
   const topSkills = getTopMatchedSkills();
   const pitchData = generateApplicationPitch();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="bg-card border border-border rounded-lg p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Icon name="BarChart3" size={20} color="var(--color-primary)" />
             Analysis Results
           </h2>
         </div>
 
-        <div className="flex flex-col items-center mb-8">
-          <div className="relative w-48 h-48 mb-4">
+        <div className="flex items-center justify-center gap-8 mb-6">
+          <div className="relative w-48 h-48">
             <svg className="w-full h-full transform -rotate-90">
               <circle
                 cx="96"
@@ -417,95 +510,244 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
               </div>
             </div>
           </div>
-          
-          <div className={`score-badge ${getScoreClass(displayScore)} text-2xl px-6 py-3`}>
-            {displayScore}% Match
-          </div>
 
-          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-success">
-            <Icon name="Check" size={16} />
-            <span>AI-powered analysis complete</span>
+          <div className="flex flex-col gap-3">
+            <div className={`score-badge ${getScoreClass(displayScore)} text-2xl px-6 py-3`}>
+              {displayScore}% Match
+            </div>
+            <div className="flex items-center gap-2 text-sm text-success">
+              <Icon name="Check" size={16} />
+              <span>AI-powered analysis complete</span>
+            </div>
           </div>
         </div>
 
-        {/* Your Pitch Section - Now at top */}
-        {pitchData?.show ? (
-          <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex items-center gap-2">
-                <Icon name="MessageSquare" size={18} color="var(--color-accent)" />
-                <h4 className="text-sm font-semibold text-foreground">
-                  Your Pitch
-                </h4>
-              </div>
-              <button
-                onClick={handleCopyPitch}
-                className="flex items-center gap-1.5 px-3 py-1 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-lg text-xs font-medium text-accent transition-colors"
-              >
-                <Icon name={copiedPitch ? "Check" : "Copy"} size={14} />
-                {copiedPitch ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            <div className="bg-card border border-border rounded-lg p-3">
-              <p className="text-sm text-foreground leading-relaxed">
-                {pitchData?.pitch}
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-              <Icon name="Info" size={12} />
-              {pitchData?.note}
-            </p>
-          </div>
-        ) : (
-          <div className="bg-warning/5 border border-warning/20 rounded-lg p-4 mb-6">
+        {/* Missing Data Alerts */}
+        {results?.missingDataAlerts && results?.missingDataAlerts?.length > 0 && (
+          <div className="bg-info/5 border border-info/20 rounded-lg p-4 mb-4">
             <div className="flex items-start gap-3">
-              <Icon name="AlertCircle" size={18} color="var(--color-warning)" />
+              <Icon name="AlertCircle" size={18} color="var(--color-info)" />
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-foreground mb-2">
-                  {pitchData?.reason}
+                  Improve Your Analysis
                 </h4>
-                {pitchData?.gaps && pitchData?.gaps?.length > 0 && (
-                  <ul className="text-xs text-muted-foreground space-y-1 mb-3">
-                    {pitchData?.gaps?.map((gap, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="text-warning mt-0.5">•</span>
-                        <span>{gap}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <p className="text-xs text-muted-foreground italic">
-                  💡 {pitchData?.advice}
-                </p>
+                <ul className="text-xs text-muted-foreground space-y-2">
+                  {results?.missingDataAlerts?.map((alert, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <span className="text-info mt-0.5">→</span>
+                      <span>{alert}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </div>
         )}
 
-        {/* Skill Highlight Badges */}
-        {topSkills?.length > 0 && (
-          <div className="bg-muted/50 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Icon name="Award" size={18} color="var(--color-primary)" />
-              <h4 className="text-sm font-semibold text-foreground">
-                These skills make you stand out for this role
-              </h4>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {topSkills?.map((skill, index) => (
-                <div
-                  key={index}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/30 rounded-full text-sm font-medium text-primary"
-                >
-                  <Icon name="CheckCircle2" size={14} />
-                  {skill}
+        {/* Assessment Sections - Always Show */}
+        <div className="space-y-3 mb-4">
+            {/* Detect if this is missing data scenario */}
+            {pitchData?.reason?.includes('Incomplete Analysis') ? (
+              <>
+                {/* MISSING DATA SCENARIO */}
+                {/* SECTION 1: FIT ASSESSMENT - Missing Data */}
+                <div className={`bg-gradient-to-br border rounded-lg p-6 shadow-sm ${
+                  pitchData?.reason?.includes('Resume')
+                    ? 'from-blue-50 to-cyan-50 border-blue-200'
+                    : 'from-purple-50 to-pink-50 border-purple-200'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`text-xl mt-0.5 flex-shrink-0 ${
+                      pitchData?.reason?.includes('Resume') ? 'text-blue-600' : 'text-purple-600'
+                    }`}>ℹ</div>
+                    <div>
+                      <h3 className="text-base font-bold text-foreground mb-2">
+                        {pitchData?.reason}
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {pitchData?.reason?.includes('Resume')
+                          ? `Your analysis score is low because your resume is missing important information, not because of a skill mismatch. Once you add the missing details, we can give you an accurate assessment.`
+                          : `Your analysis score is low because the job description is missing important details, not because of a poor fit. Try analyzing a more detailed job posting for accurate results.`
+                        }
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        <div className="space-y-3 mb-6">
+                {/* SECTION 2: RECOMMENDATION - Missing Data */}
+                <div className={`bg-gradient-to-br border rounded-lg p-5 shadow-sm ${
+                  pitchData?.reason?.includes('Resume')
+                    ? 'from-blue-50 to-cyan-50 border-blue-200'
+                    : 'from-purple-50 to-pink-50 border-purple-200'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`text-lg mt-1 flex-shrink-0 ${
+                      pitchData?.reason?.includes('Resume') ? 'text-blue-600' : 'text-purple-600'
+                    }`}>→</div>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground mb-2">
+                        {pitchData?.reason?.includes('Resume') ? 'What to Do' : 'Next Steps'}
+                      </h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {pitchData?.gaps?.[0] && (
+                          <>
+                            <strong>{pitchData?.gaps?.[0]}</strong>
+                            <br />
+                            <br />
+                          </>
+                        )}
+                        {pitchData?.advice}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* STANDARD FIT ASSESSMENT (not missing data) */}
+                {/* SECTION 1: FIT ASSESSMENT - WITH 3D SHADOW EFFECT */}
+                <div className={`bg-gradient-to-br border rounded-lg p-6 shadow-2xl ${
+                  displayScore >= 70
+                    ? 'from-green-50 to-emerald-50 border-green-200'
+                    : displayScore >= 50
+                    ? 'from-yellow-50 to-amber-50 border-yellow-200'
+                    : 'from-red-50 to-rose-50 border-red-200'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`text-2xl mt-1 flex-shrink-0 leading-none ${
+                      displayScore >= 70
+                        ? 'text-green-600'
+                        : displayScore >= 50
+                        ? 'text-yellow-600'
+                        : 'text-error'
+                    }`}>
+                      {displayScore >= 70 ? '✓' : displayScore >= 50 ? '→' : '✗'}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-foreground mb-2">
+                        {displayScore >= 70
+                          ? `Good Fit (${displayScore}% Match)`
+                          : displayScore >= 50
+                          ? `Moderate Fit (${displayScore}% Match)`
+                          : `Not a Fit (${displayScore}% Match)`
+                        }
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {displayScore >= 70
+                          ? `You have most of the skills and experience this role requires. You're a competitive candidate and have a strong chance of success.`
+                          : displayScore >= 50
+                          ? `This role requires some skills and experience you don't currently have. While you share some common ground, there are meaningful gaps to bridge.`
+                          : `This role requires a fundamentally different background and skill set than what you have. The alignment is minimal.`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION 2: RECOMMENDATION & NEXT STEPS - COMBINED */}
+                <div className={`bg-gradient-to-br border rounded-lg p-6 shadow-md ${
+                  displayScore >= 70
+                    ? 'from-green-50 to-emerald-50 border-green-200'
+                    : displayScore >= 50
+                    ? 'from-amber-50 to-yellow-50 border-amber-200'
+                    : 'from-orange-50 to-red-50 border-orange-200'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`text-2xl mt-1 flex-shrink-0 leading-none ${
+                      displayScore >= 70
+                        ? 'text-green-600'
+                        : displayScore >= 50
+                        ? 'text-amber-600'
+                        : 'text-orange-600'
+                    }`}>→</div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-foreground mb-3">
+                        Here's our recommendation
+                      </h3>
+                      {pitchData?.reason?.includes('Resume') ? (
+                        <ul className="text-sm text-muted-foreground space-y-2">
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span><span className="font-semibold text-foreground">Update your resume:</span> Add your {pitchData?.gaps?.[0]?.split('missing: ')?.[1] || 'missing information'}</span>
+                          </li>
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span>Paste the same job description back and click "Analyze Match" again</span>
+                          </li>
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span>You'll see your real compatibility score once the missing information is added</span>
+                          </li>
+                        </ul>
+                      ) : pitchData?.reason?.includes('Job Description') ? (
+                        <ul className="text-sm text-muted-foreground space-y-2">
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span><span className="font-semibold text-foreground">Get a better job description:</span> Copy the full details from the job posting</span>
+                          </li>
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span>Make sure it includes {pitchData?.gaps?.[0]?.split('missing: ')?.[1] || 'all key requirements'}</span>
+                          </li>
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span>Paste it back and re-analyze for an accurate match score</span>
+                          </li>
+                        </ul>
+                      ) : displayScore >= 70 ? (
+                        <ul className="text-sm text-muted-foreground space-y-2">
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span><span className="font-semibold text-foreground">You should apply</span> - Your background aligns well with their requirements</span>
+                          </li>
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span>Review the <span className="text-foreground font-medium">Detailed Score Breakdown</span> below to understand your strengths</span>
+                          </li>
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span>Prepare your application highlighting skills that match their requirements</span>
+                          </li>
+                        </ul>
+                      ) : displayScore >= 50 ? (
+                        <ul className="text-sm text-muted-foreground space-y-2">
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span><span className="font-semibold text-foreground">You could apply</span> if willing to invest time learning on the job</span>
+                          </li>
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span>Check the <span className="text-foreground font-medium">Skills Match</span> section to see which skills are missing</span>
+                          </li>
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span>Better strategy: improve your skills in the gaps, then apply</span>
+                          </li>
+                        </ul>
+                      ) : (
+                        <ul className="text-sm text-muted-foreground space-y-2">
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span><span className="font-semibold text-foreground">Don't apply</span> for this role - your skill set is too different</span>
+                          </li>
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span>Review the <span className="text-foreground font-medium">Skills Match</span> section to see what's missing</span>
+                          </li>
+                          <li className="flex gap-2 leading-relaxed">
+                            <span className="text-foreground flex-shrink-0">•</span>
+                            <span>Focus on finding positions that match 70%+ where you'll be competitive</span>
+                          </li>
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+        </div>
+
+        <div className="space-y-3 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-foreground">
               Detailed Score Breakdown
@@ -556,13 +798,15 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
               {expandedFactor === index && (
                 <div className="px-4 pb-4 pt-2 bg-muted/30 border-t border-border">
                   <div className="space-y-3">
-                    {factor?.matchedKeywords !== undefined && (
+                    {factor?.matchedKeywords !== undefined && !['Location Match', 'Experience Level', 'Education'].includes(factor?.name) && (
                       <div className="flex items-start gap-2 text-xs">
                         <Icon name="CheckCircle" size={14} color={factor?.color} className="mt-0.5" />
                         <div>
-                          <span className="font-medium text-foreground">Matched Keywords: </span>
+                          <span className="font-medium text-foreground">
+                            {factor?.name === 'Skills Match' ? 'Matched Skills: ' : 'Matched Keywords: '}
+                          </span>
                           <span className="text-muted-foreground">
-                            {factor?.matchedKeywords} of {factor?.totalKeywords} key terms found
+                            {factor?.matchedKeywords} of {factor?.totalKeywords} {factor?.name === 'Skills Match' ? 'key skills' : 'key terms'} found
                           </span>
                         </div>
                       </div>
@@ -570,8 +814,8 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
                     
                     <div className="flex items-start gap-2 text-xs">
                       <Icon name="Info" size={14} color={factor?.color} className="mt-0.5" />
-                      <p className="text-muted-foreground leading-relaxed">
-                        {factor?.explanation}
+                      <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                        {renderExplanation(factor?.explanation)}
                       </p>
                     </div>
 

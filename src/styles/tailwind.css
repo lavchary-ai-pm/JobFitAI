@@ -233,8 +233,9 @@
 
   /* Drag and Drop Zone */
   .drop-zone {
-    @apply border-2 border-dashed border-border rounded-lg p-8 text-center transition-all duration-200;
+    @apply border-2 border-dashed border-border rounded-lg p-8 text-center transition-all duration-200 cursor-pointer;
     background: var(--color-muted);
+    pointer-events: auto;
   }
 
   .drop-zone:hover {

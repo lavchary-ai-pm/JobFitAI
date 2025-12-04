@@ -29,6 +29,11 @@ app.post('/api/analyze', async (req, res) => {
   try {
     const { resumeText, jobDescription } = req.body;
 
+    console.log('📥 Received analysis request:');
+    console.log('  Resume length:', resumeText?.length || 0);
+    console.log('  Job description length:', jobDescription?.length || 0);
+    console.log('  Job first 100 chars:', jobDescription?.substring(0, 100) || 'N/A');
+
     if (!resumeText || !jobDescription) {
       return res.status(400).json({
         error: 'Missing resumeText or jobDescription',
@@ -46,6 +51,10 @@ app.post('/api/analyze', async (req, res) => {
     // Truncate texts to save tokens
     const truncatedResume = truncateText(resumeText, 2000);
     const truncatedJob = truncateText(jobDescription, 1500);
+
+    console.log('📋 After truncation:');
+    console.log('  Resume length:', truncatedResume.length);
+    console.log('  Job length:', truncatedJob.length);
 
     const userPrompt = `RESUME:
 ${truncatedResume}
@@ -90,15 +99,16 @@ Return ONLY this JSON structure (no other text, no markdown):
   "experienceMatch": {
     "candidateYears": 5,
     "requiredYears": 5,
-    "roleAlignment": "perfect",
-    "explanation": "Candidate has exact 5 years experience as Senior Developer, meeting the 5+ years requirement.",
+    "yourExperience": "12 years as Product Manager",
+    "requiredExperience": "Not specified",
+    "explanation": "Candidate has 12 years experience but as Product Manager, not as Frontend Developer role required.",
     "score": 100
   },
   "locationMatch": {
     "score": 100,
     "candidateLocation": "Full location from resume",
     "jobLocation": "Full location from job",
-    "explanation": "Candidate is in Los Angeles, NJ. Job requires Los Angeles, NJ. Perfect match."
+    "explanation": "Candidate is in location from resume. Job requires location from job. Match or mismatch details."
   },
   "overallInsight": "Strong fit for this role."
 }`;
@@ -120,7 +130,21 @@ CRITICAL REQUIREMENTS:
 1. For location: Extract the EXACT location from the resume (e.g., "Whitehouse Station, NJ" not just "NJ")
 2. For skills: List ALL matched skills and ALL missing skills separately
 3. For keywords: List ALL matched keywords and ALL missing keywords separately
-4. For explanations: Always include specific examples of what matched and what's missing
+4. For experience:
+   - Extract ACTUAL years and role from resume by adding up years from all roles (e.g., "8 years as Senior Developer")
+   - Extract ACTUAL years requirement from job description (e.g., "5+ years required")
+   - If years not specified in job description, set requiredExperience to "Not specified"
+   - If years not in resume, set yourExperience to "Not mentioned"
+5. For education:
+   - Extract education from resume (e.g., "Bachelor's in Computer Science")
+   - Extract required education from job description (e.g., "Bachelor's required")
+   - If education not mentioned in resume, set to "Not mentioned"
+   - If education not required in job description, set to "Not specified"
+6. For explanations: Always include specific examples of what matched and what's missing
+7. For missing data:
+   - If experience years not specified in job description, clearly state "experience requirement not specified"
+   - If education not mentioned in resume, state "education not mentioned in resume"
+   - If education not required in job description, state "education requirement not specified"
 
 Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
     });
@@ -137,6 +161,29 @@ Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
+
+    // Fallback logic: Populate missing experience and education fields
+    // If Claude didn't populate yourExperience, construct it from resumeParsed data
+    if (!parsed.experienceMatch.yourExperience || parsed.experienceMatch.yourExperience === 'Not mentioned') {
+      if (parsed.resumeParsed.yearsExperience && parsed.resumeParsed.mainRole) {
+        parsed.experienceMatch.yourExperience = `${parsed.resumeParsed.yearsExperience} years as ${parsed.resumeParsed.mainRole}`;
+      } else if (parsed.resumeParsed.yearsExperience) {
+        parsed.experienceMatch.yourExperience = `${parsed.resumeParsed.yearsExperience} years experience`;
+      }
+    }
+
+    // If Claude didn't populate resumeParsed.education, use placeholder
+    if (!parsed.resumeParsed.education || parsed.resumeParsed.education === 'Not mentioned') {
+      parsed.resumeParsed.education = 'Not mentioned';
+    }
+
+    // If Claude didn't populate requiredEducation in jobAnalysis, use placeholder
+    if (!parsed.jobAnalysis.requiredEducation) {
+      parsed.jobAnalysis.requiredEducation = 'Not specified';
+    }
+
+    console.log('✓ Processed experience data:', parsed.experienceMatch.yourExperience);
+    console.log('✓ Processed education data:', parsed.resumeParsed.education);
 
     // Log token usage
     const totalTokens =
