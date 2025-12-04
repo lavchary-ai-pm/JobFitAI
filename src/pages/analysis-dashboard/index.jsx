@@ -1063,7 +1063,13 @@ Benefits:
       const claudeAnalysis = await analyzeWithClaude(resumeText, jobDescription);
 
       // OVERRIDE: If Claude says "Not mentioned" but we extracted experience, use our extraction
+      console.log('🔍 Experience Debug:', {
+        claudeResponse: claudeAnalysis.experienceMatch.yourExperience,
+        preExtracted: preExtractedExperience,
+        willOverride: claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned' && preExtractedExperience
+      });
       if (claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned' && preExtractedExperience) {
+        console.log('✅ Overriding experience with:', preExtractedExperience);
         claudeAnalysis.experienceMatch.yourExperience = preExtractedExperience;
       }
 
