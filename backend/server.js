@@ -165,19 +165,19 @@ Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
     // Fallback logic: Populate missing experience and education fields
     // If Claude didn't populate yourExperience, extract it from resume text directly
     if (!parsed.experienceMatch.yourExperience || parsed.experienceMatch.yourExperience === 'Not mentioned') {
-      // Try to extract experience from resume text
-      const resumeLower = truncatedResume.toLowerCase();
+      let extractedExperience = null;
 
       // Pattern 1: Look for "X+ years as [Role]" or "X years of [Role]"
       const yearsRoleMatch = truncatedResume.match(/(\d+)\+?\s*years?\s*(?:as|of|in|serving\s+as)\s*([a-zA-Z\s]+?)(?:\(|,|;|-|$)/i);
       if (yearsRoleMatch) {
         const years = yearsRoleMatch[1];
         const role = yearsRoleMatch[2].trim();
-        parsed.experienceMatch.yourExperience = `${years}+ years as ${role}`;
+        extractedExperience = `${years}+ years as ${role}`;
       }
-      // Pattern 2: Look for date ranges like "2013-2025" with role titles
-      else {
-        const dateRangeMatch = truncatedResume.match(/([A-Z][a-z]+\s+[A-Z][a-z]+.*?)\s*\((\d{4})\s*[-–—]\s*(\d{4}|present|current)/i);
+
+      // Pattern 2: Look for date ranges like "Product Manager (2013-2025)" with parentheses
+      if (!extractedExperience) {
+        const dateRangeMatch = truncatedResume.match(/([A-Za-z\s]+?)\s*\((\d{4})\s*[-–—]\s*(\d{4}|present|current)\)/i);
         if (dateRangeMatch) {
           const role = dateRangeMatch[1].trim();
           const startYear = parseInt(dateRangeMatch[2]);
@@ -185,13 +185,33 @@ Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
             ? new Date().getFullYear()
             : parseInt(dateRangeMatch[3]);
           const years = Math.max(1, endYear - startYear);
-          parsed.experienceMatch.yourExperience = `${years}+ years as ${role} (${startYear}-${dateRangeMatch[3]})`;
+          // Extract years from text if available (e.g., "10+ years")
+          const yearsFromText = truncatedResume.match(/(\d+)\+?\s*years?/i);
+          const yearsSuffix = yearsFromText ? yearsFromText[1] + '+ ' : years + ' ';
+          extractedExperience = `${yearsSuffix}years as ${role} (${startYear}-${dateRangeMatch[3]})`;
         }
       }
 
+      // Pattern 3: Look for "Role (Years-Present)" without explicit years prefix
+      if (!extractedExperience) {
+        const simpleRoleMatch = truncatedResume.match(/([A-Z][a-zA-Z\s]+?)\s*,\s*(\d{4})\s*[-–—]\s*(\d{4}|present|current)/i);
+        if (simpleRoleMatch) {
+          const role = simpleRoleMatch[1].trim();
+          const startYear = parseInt(simpleRoleMatch[2]);
+          const endYear = simpleRoleMatch[3].toLowerCase() === 'present' || simpleRoleMatch[3].toLowerCase() === 'current'
+            ? new Date().getFullYear()
+            : parseInt(simpleRoleMatch[3]);
+          const years = Math.max(1, endYear - startYear);
+          extractedExperience = `${years}+ years as ${role} (${startYear}-${simpleRoleMatch[3]})`;
+        }
+      }
+
+      // Use extracted experience if found
+      if (extractedExperience) {
+        parsed.experienceMatch.yourExperience = extractedExperience;
+      }
       // Final fallback: use Claude's parsed yearsExperience and mainRole
-      if ((!parsed.experienceMatch.yourExperience || parsed.experienceMatch.yourExperience === 'Not mentioned') &&
-          (parsed.resumeParsed.yearsExperience || parsed.resumeParsed.mainRole)) {
+      else if (parsed.resumeParsed.yearsExperience || parsed.resumeParsed.mainRole) {
         if (parsed.resumeParsed.yearsExperience && parsed.resumeParsed.mainRole) {
           parsed.experienceMatch.yourExperience = `${parsed.resumeParsed.yearsExperience} years as ${parsed.resumeParsed.mainRole}`;
         } else if (parsed.resumeParsed.yearsExperience) {

@@ -56,18 +56,8 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
       // Handle DOCX files
       if (fileName.endsWith('.docx')) {
         const arrayBuffer = await file.arrayBuffer();
-        // Use extractRichText which preserves paragraph breaks and formatting
-        // This helps Claude better identify experience, education, and other structured data
-        const result = await mammoth.extractRichText({ arrayBuffer });
-        // Convert HTML structure to plain text while preserving key formatting
-        extractedText = result.value
-          .replace(/<\/p>/gi, '\n')
-          .replace(/<[^>]+>/g, '') // Remove remaining HTML tags
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&amp;/g, '&')
-          .replace(/\n\n+/g, '\n'); // Normalize multiple newlines
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        extractedText = result.value;
       }
       // Handle PDF files
       else if (fileName.endsWith('.pdf')) {
