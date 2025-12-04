@@ -548,6 +548,45 @@ Benefits:
     };
   };
 
+  // CLIENT-SIDE: Extract experience from resume text to override Claude if needed
+  const extractExperienceFromResume = (text) => {
+    if (!text) return null;
+
+    // Pattern 1: "X+ years as [Role]" or "X years of [Role]"
+    const yearsRoleMatch = text.match(/(\d+)\+?\s*years?\s*(?:as|of|in|serving\s+as)\s*([a-zA-Z\s]+?)(?:\(|,|;|-|$)/i);
+    if (yearsRoleMatch) {
+      const years = yearsRoleMatch[1];
+      const role = yearsRoleMatch[2].trim();
+      return `${years}+ years as ${role}`;
+    }
+
+    // Pattern 2: "Role (YYYY-YYYY)" with date ranges
+    const dateRangeMatch = text.match(/([A-Za-z\s]+?)\s*\((\d{4})\s*[-–—]\s*(\d{4}|present|current)\)/i);
+    if (dateRangeMatch) {
+      const role = dateRangeMatch[1].trim();
+      const startYear = parseInt(dateRangeMatch[2]);
+      const endYear = dateRangeMatch[3].toLowerCase() === 'present' || dateRangeMatch[3].toLowerCase() === 'current'
+        ? new Date().getFullYear()
+        : parseInt(dateRangeMatch[3]);
+      const years = Math.max(1, endYear - startYear);
+      return `${years}+ years as ${role} (${startYear}-${dateRangeMatch[3]})`;
+    }
+
+    // Pattern 3: "Role, YYYY-YYYY" with comma separator
+    const commaRoleMatch = text.match(/([A-Z][a-zA-Z\s]+?)\s*,\s*(\d{4})\s*[-–—]\s*(\d{4}|present|current)/i);
+    if (commaRoleMatch) {
+      const role = commaRoleMatch[1].trim();
+      const startYear = parseInt(commaRoleMatch[2]);
+      const endYear = commaRoleMatch[3].toLowerCase() === 'present' || commaRoleMatch[3].toLowerCase() === 'current'
+        ? new Date().getFullYear()
+        : parseInt(commaRoleMatch[3]);
+      const years = Math.max(1, endYear - startYear);
+      return `${years}+ years as ${role} (${startYear}-${commaRoleMatch[3]})`;
+    }
+
+    return null;
+  };
+
   // UPDATED: Location extraction with explicit city/state/country mentions (DIMENSION 4)
   const extractLocationInfo = (text) => {
     const textLower = text?.toLowerCase();
@@ -1016,8 +1055,17 @@ Benefits:
     setAnalysisResults(null);
 
     try {
+      // PRE-EXTRACT: Get experience from resume before Claude analysis
+      // This prevents Claude from returning "Not mentioned" when experience clearly exists
+      const preExtractedExperience = extractExperienceFromResume(resumeText);
+
       // Get Claude's intelligent analysis
       const claudeAnalysis = await analyzeWithClaude(resumeText, jobDescription);
+
+      // OVERRIDE: If Claude says "Not mentioned" but we extracted experience, use our extraction
+      if (claudeAnalysis.experienceMatch.yourExperience === 'Not mentioned' && preExtractedExperience) {
+        claudeAnalysis.experienceMatch.yourExperience = preExtractedExperience;
+      }
 
       // Calculate traditional scores (simple math rules) - these are validated and reliable
       const locationInfo = extractLocationInfo(resumeText);
@@ -1049,7 +1097,7 @@ Benefits:
       }
 
       // Education score: Return 0% if missing from resume or job description
-      let educationScore = 100; // Default: assume match if both provided
+      let educationScore = 0; // Default: No match unless we validate both have complete data
       let educationExplanation = '';
 
       if (claudeAnalysis.resumeParsed.education === 'Not mentioned' ||
@@ -1069,6 +1117,12 @@ Benefits:
         // Simple heuristic: if resume education contains keywords from required education, it matches
         const resumeEdu = (claudeAnalysis.resumeParsed.education || '').toLowerCase();
         const requiredEdu = (claudeAnalysis.jobAnalysis.requiredEducation || '').toLowerCase();
+
+        // If job doesn't specify education requirement, still show resume education but indicate it's not evaluated
+        if (claudeAnalysis.jobAnalysis.requiredEducation === 'Not specified') {
+          educationScore = 0;
+          educationExplanation = 'Job description does not specify education requirements. Your education (' + claudeAnalysis.resumeParsed.education + ') cannot be evaluated against job requirements. Add education requirements to job description for accurate assessment.';
+        } else {
 
         // Check for common degree levels - hierarchically ranked
         // Master's and PhD meet all bachelor requirements
@@ -1097,6 +1151,7 @@ Benefits:
         } else {
           educationScore = 40;
           educationExplanation = `Your education (${claudeAnalysis.resumeParsed.education}) may not fully meet the job requirements (${claudeAnalysis.jobAnalysis.requiredEducation}). Consider highlighting relevant coursework or certifications.`;
+        }
         }
       }
 
