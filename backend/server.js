@@ -167,12 +167,16 @@ Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
     if (!parsed.experienceMatch.yourExperience || parsed.experienceMatch.yourExperience === 'Not mentioned') {
       let extractedExperience = null;
 
+      console.log('📋 Attempting experience extraction from resume text...');
+      console.log('Resume excerpt:', truncatedResume.substring(0, 300));
+
       // Pattern 1: Look for "X+ years as [Role]" or "X years of [Role]"
       const yearsRoleMatch = truncatedResume.match(/(\d+)\+?\s*years?\s*(?:as|of|in|serving\s+as)\s*([a-zA-Z\s]+?)(?:\(|,|;|-|$)/i);
       if (yearsRoleMatch) {
         const years = yearsRoleMatch[1];
         const role = yearsRoleMatch[2].trim();
         extractedExperience = `${years}+ years as ${role}`;
+        console.log('✓ Pattern 1 matched:', extractedExperience);
       }
 
       // Pattern 2: Look for date ranges like "Product Manager (2013-2025)" with parentheses
@@ -189,6 +193,7 @@ Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
           const yearsFromText = truncatedResume.match(/(\d+)\+?\s*years?/i);
           const yearsSuffix = yearsFromText ? yearsFromText[1] + '+ ' : years + ' ';
           extractedExperience = `${yearsSuffix}years as ${role} (${startYear}-${dateRangeMatch[3]})`;
+          console.log('✓ Pattern 2 matched:', extractedExperience);
         }
       }
 
@@ -203,12 +208,14 @@ Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
             : parseInt(simpleRoleMatch[3]);
           const years = Math.max(1, endYear - startYear);
           extractedExperience = `${years}+ years as ${role} (${startYear}-${simpleRoleMatch[3]})`;
+          console.log('✓ Pattern 3 matched:', extractedExperience);
         }
       }
 
       // Use extracted experience if found
       if (extractedExperience) {
         parsed.experienceMatch.yourExperience = extractedExperience;
+        console.log('✓ Using extracted experience:', extractedExperience);
       }
       // Final fallback: use Claude's parsed yearsExperience and mainRole
       else if (parsed.resumeParsed.yearsExperience || parsed.resumeParsed.mainRole) {
@@ -217,6 +224,9 @@ Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
         } else if (parsed.resumeParsed.yearsExperience) {
           parsed.experienceMatch.yourExperience = `${parsed.resumeParsed.yearsExperience} years experience`;
         }
+        console.log('✓ Using Claude parsed data:', parsed.experienceMatch.yourExperience);
+      } else {
+        console.log('✗ No experience extraction succeeded');
       }
     }
 
