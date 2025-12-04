@@ -124,29 +124,36 @@ Return ONLY this JSON structure (no other text, no markdown):
           content: userPrompt,
         },
       ],
-      system: `You are a recruitment expert. Your job is to accurately extract and analyze resume and job description data.
+      system: `You are a recruitment expert. Extract data precisely from resume and job description.
 
-CRITICAL REQUIREMENTS:
-1. For location: Extract the EXACT location from the resume (e.g., "Whitehouse Station, NJ" not just "NJ")
-2. For skills: List ALL matched skills and ALL missing skills separately
-3. For keywords: List ALL matched keywords and ALL missing keywords separately
-4. For experience - VERY IMPORTANT:
-   - yourExperience: Extract the FULL experience description from resume including years and roles (e.g., "10+ years as Product Manager (2013-2025)" or "12 years as Senior Frontend Developer"). Look for date ranges, job titles, and year mentions.
-   - requiredExperience: Extract from job description (e.g., "5+ years required"). If not found, set to "Not specified"
-   - If you cannot find ANY experience information in the resume, ONLY then set yourExperience to "Not mentioned"
-   - Check dates like "2013-2025", "2013-present", and add up years across roles
-5. For education:
-   - Extract education from resume (e.g., "Bachelor's in Computer Science")
-   - Extract required education from job description (e.g., "Bachelor's required")
-   - If education not mentioned in resume, set to "Not mentioned"
-   - If education not required in job description, set to "Not specified"
-6. For explanations: Always include specific examples of what matched and what's missing
-7. For missing data:
-   - If experience years not specified in job description, clearly state "experience requirement not specified"
-   - If education not mentioned in resume, state "education not mentioned in resume"
-   - If education not required in job description, state "education requirement not specified"
+CRITICAL - Your fields MUST be populated:
+1. For "yourExperience" (REQUIRED FIELD):
+   - ALWAYS extract and populate this field from the resume text
+   - Format: "X+ years as [Role]" or "[Years] years as [Role] (dates)"
+   - Examples: "10+ years as Product Manager", "8 years as Senior Developer (2016-2024)"
+   - Do NOT set to "Not mentioned" unless the resume has ZERO mention of any job title or experience
+   - Include years, role name, and dates if available
+   - If years number appears in resume, use it: "10+ years as Product Manager (2013-2025)"
 
-Return ONLY valid JSON (no markdown, no explanation, no extra text).`,
+2. For location: Extract EXACT location from resume (e.g., "Whitehouse Station, NJ" not just "NJ")
+
+3. For skills: List ALL matched and ALL missing skills separately
+
+4. For keywords: List ALL matched and ALL missing keywords separately
+
+5. For experience matching:
+   - candidateYears: Extract years as a number from resume
+   - requiredYears: Extract years as a number from job description
+   - If years not specified in job description, set requiredExperience to "Not specified"
+
+6. For education:
+   - Extract from resume (e.g., "Bachelor's in Computer Science")
+   - Extract requirement from job (e.g., "Bachelor's required")
+   - Set to "Not mentioned" ONLY if not in document
+
+7. For explanations: Include specific examples of matches and gaps
+
+Return ONLY valid JSON (no markdown, no extra text).`,
     });
 
     // Extract JSON from response
