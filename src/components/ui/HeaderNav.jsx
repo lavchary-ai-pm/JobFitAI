@@ -27,10 +27,10 @@ const HeaderNav = () => {
           <button
             onClick={handleLogoClick}
             className="header-logo"
-            aria-label="ResumeMatch Pro Home">
+            aria-label="JobFit AI Home">
 
             <div className="header-logo-icon">
-              <Icon name="FileText" size={20} color="#FFFFFF" />
+              <Icon name="Target" size={20} color="#FFFFFF" />
             </div>
             <span className="header-logo-text hidden sm:inline">JobFit AI</span>
           </button>
@@ -41,7 +41,7 @@ const HeaderNav = () => {
             variant="ghost"
             size="icon"
             onClick={toggleMobileMenu}
-            className="md:hidden"
+            className="md:hidden hover:bg-muted"
             aria-label="Toggle mobile menu">
 
             <Icon name={mobileMenuOpen ? 'X' : 'Menu'} size={24} />
@@ -52,24 +52,28 @@ const HeaderNav = () => {
       {mobileMenuOpen &&
       <>
           <div
-          className="fixed inset-0 bg-black/50 z-[1500] md:hidden"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[1500] md:hidden"
           onClick={() => setMobileMenuOpen(false)} />
 
-          <div className="fixed top-[60px] right-0 w-64 h-[calc(100vh-60px)] bg-card border-l border-border z-[1501] md:hidden animate-slide-in-right">
-            <nav className="flex flex-col p-4 gap-2">
+          <div className="fixed top-[64px] right-0 w-72 h-[calc(100vh-64px)] bg-card border-l border-border z-[1501] md:hidden animate-slide-in-right">
+            <nav className="flex flex-col p-5 gap-2">
               <button
               onClick={handleSettingsClick}
-              className="flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted rounded-lg transition-colors duration-200">
+              className="flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-foreground hover:bg-muted rounded-xl transition-all duration-200">
 
-                <Icon name="Settings" size={20} />
+                <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
+                  <Icon name="Settings" size={18} />
+                </div>
                 Settings
               </button>
-              <div className="border-t border-border my-2" />
+              <div className="border-t border-border my-3" />
               <button
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted rounded-lg transition-colors duration-200">
+              className="flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-foreground hover:bg-muted rounded-xl transition-all duration-200">
 
-                <Icon name="LogOut" size={20} />
+                <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
+                  <Icon name="LogOut" size={18} />
+                </div>
                 Sign Out
               </button>
             </nav>

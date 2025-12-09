@@ -69,14 +69,14 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
 
   if (!results) {
     return (
-      <div className="bg-card border border-border rounded-lg p-12 flex flex-col items-center justify-center min-h-[600px]">
-        <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-6">
+      <div className="bg-card border border-border rounded-xl p-12 flex flex-col items-center justify-center min-h-[600px] shadow-sm">
+        <div className="w-28 h-28 rounded-2xl bg-muted/50 flex items-center justify-center mb-8 border border-border">
           <Icon name="BarChart3" size={48} className="text-muted-foreground" />
         </div>
-        <h3 className="text-xl font-semibold text-foreground mb-2">
+        <h3 className="text-2xl font-semibold text-foreground mb-3 tracking-tight">
           No Analysis Yet
         </h3>
-        <p className="text-muted-foreground text-center max-w-md">
+        <p className="text-muted-foreground text-center max-w-md leading-relaxed">
           Upload your resume and paste a job description, then click "Analyze Match" to see your compatibility score and detailed breakdown.
         </p>
       </div>
@@ -90,9 +90,15 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
   };
 
   const getScoreColor = (score) => {
-    if (score >= 80) return 'var(--color-success)';
-    if (score >= 60) return 'var(--color-warning)';
-    return 'var(--color-error)';
+    if (score >= 80) return '#16A34A'; // Green-600 (like PageSpeed)
+    if (score >= 60) return '#EAB308'; // Yellow-500
+    return '#DC2626'; // Red-600
+  };
+
+  const getScoreGlow = (score) => {
+    if (score >= 80) return 'rgba(22, 163, 74, 0.2)';
+    if (score >= 60) return 'rgba(234, 179, 8, 0.2)'; // Yellow glow
+    return 'rgba(220, 38, 38, 0.2)';
   };
 
 
@@ -469,73 +475,93 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
   const pitchData = generateApplicationPitch();
 
   return (
-    <div className="space-y-4">
-      <div className="bg-card border border-border rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Icon name="BarChart3" size={20} color="var(--color-primary)" />
+    <div className="space-y-5">
+      <div className="bg-card border border-border rounded-xl p-6 md:p-8 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-foreground flex items-center gap-3 tracking-tight">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Icon name="BarChart3" size={22} color="var(--color-primary)" />
+            </div>
             Analysis Results
           </h2>
         </div>
 
-        <div className="flex items-center justify-center gap-8 mb-6">
-          <div className="relative w-48 h-48">
-            <svg className="w-full h-full transform -rotate-90">
+        {/* Enhanced Visual Score Gauge */}
+        <div className="flex flex-col md:flex-row items-center justify-center gap-8 mb-8">
+          <div className="relative w-52 h-52">
+            {/* Outer glow effect */}
+            <div
+              className="absolute inset-0 rounded-full blur-xl opacity-50 transition-all duration-500"
+              style={{ backgroundColor: getScoreGlow(displayScore) }}
+            />
+            <svg className="w-full h-full transform -rotate-90 relative z-10">
+              {/* Background track */}
               <circle
-                cx="96"
-                cy="96"
-                r="88"
+                cx="104"
+                cy="104"
+                r="92"
                 stroke="var(--color-muted)"
-                strokeWidth="12"
+                strokeWidth="10"
                 fill="none"
               />
+              {/* Progress arc */}
               <circle
-                cx="96"
-                cy="96"
-                r="88"
+                cx="104"
+                cy="104"
+                r="92"
                 stroke={getScoreColor(displayScore)}
-                strokeWidth="12"
+                strokeWidth="10"
                 fill="none"
-                strokeDasharray={`${(displayScore / 100) * 553} 553`}
+                strokeDasharray={`${(displayScore / 100) * 578} 578`}
                 strokeLinecap="round"
-                className="transition-all duration-200 ease-out"
+                className="transition-all duration-700 ease-out"
+                style={{
+                  filter: `drop-shadow(0 0 8px ${getScoreGlow(displayScore)})`
+                }}
               />
             </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-5xl font-bold text-foreground tabular-nums">
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
+              <div
+                className="text-6xl font-bold tabular-nums tracking-tight transition-colors duration-300"
+                style={{ color: getScoreColor(displayScore) }}
+              >
                 {displayScore}
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground font-medium mt-1">
                 Overall Score
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <div className={`score-badge ${getScoreClass(displayScore)} text-2xl px-6 py-3`}>
+          <div className="flex flex-col gap-4 items-center md:items-start">
+            <div className={`score-badge ${getScoreClass(displayScore)} text-xl px-6 py-3`}>
               {displayScore}% Match
             </div>
-            <div className="flex items-center gap-2 text-sm text-success">
-              <Icon name="Check" size={16} />
-              <span>AI-powered analysis complete</span>
+            <div className="flex items-center gap-2 text-sm text-primary">
+              <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                <Icon name="Check" size={12} />
+              </div>
+              <span className="font-medium">AI-powered analysis complete</span>
             </div>
           </div>
         </div>
 
         {/* Missing Data Alerts */}
         {results?.missingDataAlerts && results?.missingDataAlerts?.length > 0 && (
-          <div className="bg-info/5 border border-info/20 rounded-lg p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <Icon name="AlertCircle" size={18} color="var(--color-info)" />
+          <div className="bg-info/5 border border-info/20 rounded-xl p-5 mb-6">
+            <div className="flex items-start gap-4">
+              <div className="w-9 h-9 rounded-lg bg-info/10 flex items-center justify-center flex-shrink-0">
+                <Icon name="AlertCircle" size={18} color="var(--color-info)" />
+              </div>
               <div className="flex-1">
-                <h4 className="text-sm font-semibold text-foreground mb-2">
+                <h4 className="text-sm font-semibold text-foreground mb-3">
                   Improve Your Analysis
                 </h4>
-                <ul className="text-xs text-muted-foreground space-y-2">
+                <ul className="text-sm text-muted-foreground space-y-2.5">
                   {results?.missingDataAlerts?.map((alert, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <span className="text-info mt-0.5">→</span>
-                      <span>{alert}</span>
+                    <li key={index} className="flex items-start gap-2.5">
+                      <span className="text-info mt-0.5 font-medium">→</span>
+                      <span className="leading-relaxed">{alert}</span>
                     </li>
                   ))}
                 </ul>
@@ -545,23 +571,25 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
         )}
 
         {/* Assessment Sections - Always Show */}
-        <div className="space-y-3 mb-4">
+        <div className="space-y-4 mb-6">
             {/* Detect if this is missing data scenario */}
             {pitchData?.reason?.includes('Incomplete Analysis') ? (
               <>
                 {/* MISSING DATA SCENARIO */}
                 {/* SECTION 1: FIT ASSESSMENT - Missing Data */}
-                <div className={`bg-gradient-to-br border rounded-lg p-6 shadow-sm ${
+                <div className={`border rounded-xl p-6 ${
                   pitchData?.reason?.includes('Resume')
-                    ? 'from-blue-50 to-cyan-50 border-blue-200'
-                    : 'from-purple-50 to-pink-50 border-purple-200'
+                    ? 'bg-info/5 border-info/20'
+                    : 'bg-primary/5 border-primary/20'
                 }`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`text-xl mt-0.5 flex-shrink-0 ${
-                      pitchData?.reason?.includes('Resume') ? 'text-blue-600' : 'text-purple-600'
-                    }`}>ℹ</div>
+                  <div className="flex items-start gap-4">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      pitchData?.reason?.includes('Resume') ? 'bg-info/10 text-info' : 'bg-primary/10 text-primary'
+                    }`}>
+                      <Icon name="AlertCircle" size={20} />
+                    </div>
                     <div>
-                      <h3 className="text-base font-bold text-foreground mb-2">
+                      <h3 className="text-base font-semibold text-foreground mb-2">
                         {pitchData?.reason}
                       </h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">
@@ -575,29 +603,31 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
                 </div>
 
                 {/* SECTION 2: RECOMMENDATION - Missing Data */}
-                <div className={`bg-gradient-to-br border rounded-lg p-5 shadow-sm ${
+                <div className={`border rounded-xl p-5 ${
                   pitchData?.reason?.includes('Resume')
-                    ? 'from-blue-50 to-cyan-50 border-blue-200'
-                    : 'from-purple-50 to-pink-50 border-purple-200'
+                    ? 'bg-info/5 border-info/20'
+                    : 'bg-primary/5 border-primary/20'
                 }`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`text-lg mt-1 flex-shrink-0 ${
-                      pitchData?.reason?.includes('Resume') ? 'text-blue-600' : 'text-purple-600'
-                    }`}>→</div>
+                  <div className="flex items-start gap-4">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      pitchData?.reason?.includes('Resume') ? 'bg-info/10 text-info' : 'bg-primary/10 text-primary'
+                    }`}>
+                      <Icon name="ArrowRight" size={18} />
+                    </div>
                     <div>
-                      <h3 className="text-sm font-bold text-foreground mb-2">
+                      <h3 className="text-sm font-semibold text-foreground mb-2">
                         {pitchData?.reason?.includes('Resume') ? 'What to Do' : 'Next Steps'}
                       </h3>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
+                      <div className="text-sm text-muted-foreground leading-relaxed">
                         {pitchData?.gaps?.[0] && (
                           <>
-                            <strong>{pitchData?.gaps?.[0]}</strong>
+                            <strong className="text-foreground">{pitchData?.gaps?.[0]}</strong>
                             <br />
                             <br />
                           </>
                         )}
                         {pitchData?.advice}
-                      </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -605,26 +635,29 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
             ) : (
               <>
                 {/* STANDARD FIT ASSESSMENT (not missing data) */}
-                {/* SECTION 1: FIT ASSESSMENT - WITH 3D SHADOW EFFECT */}
-                <div className={`bg-gradient-to-br border rounded-lg p-6 shadow-2xl ${
+                {/* SECTION 1: FIT ASSESSMENT - Dark Mode Card */}
+                <div className={`border rounded-xl p-6 ${
                   displayScore >= 70
-                    ? 'from-green-50 to-emerald-50 border-green-200'
+                    ? 'bg-success/5 border-success/20'
                     : displayScore >= 50
-                    ? 'from-yellow-50 to-amber-50 border-yellow-200'
-                    : 'from-red-50 to-rose-50 border-red-200'
+                    ? 'bg-warning/5 border-warning/20'
+                    : 'bg-error/5 border-error/20'
                 }`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`text-2xl mt-1 flex-shrink-0 leading-none ${
+                  <div className="flex items-start gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
                       displayScore >= 70
-                        ? 'text-green-600'
+                        ? 'bg-success/10 text-success'
                         : displayScore >= 50
-                        ? 'text-yellow-600'
-                        : 'text-error'
+                        ? 'bg-warning/10 text-warning'
+                        : 'bg-error/10 text-error'
                     }`}>
-                      {displayScore >= 70 ? '✓' : displayScore >= 50 ? '→' : '✗'}
+                      <Icon
+                        name={displayScore >= 70 ? 'CheckCircle' : displayScore >= 50 ? 'ArrowRight' : 'XCircle'}
+                        size={24}
+                      />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-sm font-bold text-foreground mb-2">
+                      <h3 className="text-base font-semibold text-foreground mb-2">
                         {displayScore >= 70
                           ? `Good Fit (${displayScore}% Match)`
                           : displayScore >= 50
@@ -645,23 +678,25 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
                 </div>
 
                 {/* SECTION 2: RECOMMENDATION & NEXT STEPS - COMBINED */}
-                <div className={`bg-gradient-to-br border rounded-lg p-6 shadow-md ${
+                <div className={`border rounded-xl p-6 ${
                   displayScore >= 70
-                    ? 'from-green-50 to-emerald-50 border-green-200'
+                    ? 'bg-success/5 border-success/20'
                     : displayScore >= 50
-                    ? 'from-amber-50 to-yellow-50 border-amber-200'
-                    : 'from-orange-50 to-red-50 border-orange-200'
+                    ? 'bg-warning/5 border-warning/20'
+                    : 'bg-error/5 border-error/20'
                 }`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`text-2xl mt-1 flex-shrink-0 leading-none ${
+                  <div className="flex items-start gap-4">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       displayScore >= 70
-                        ? 'text-green-600'
+                        ? 'bg-success/10 text-success'
                         : displayScore >= 50
-                        ? 'text-amber-600'
-                        : 'text-orange-600'
-                    }`}>→</div>
+                        ? 'bg-warning/10 text-warning'
+                        : 'bg-error/10 text-error'
+                    }`}>
+                      <Icon name="Lightbulb" size={20} />
+                    </div>
                     <div className="flex-1">
-                      <h3 className="text-sm font-bold text-foreground mb-3">
+                      <h3 className="text-sm font-semibold text-foreground mb-3">
                         Here's our recommendation
                       </h3>
                       {pitchData?.reason?.includes('Resume') ? (
@@ -747,60 +782,85 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
             )}
         </div>
 
-        <div className="space-y-3 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-foreground">
+        <div className="space-y-4 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-foreground tracking-tight">
               Detailed Score Breakdown
             </h3>
-            <button
-              onClick={onOpenScoringSettings}
-              className="text-xs text-primary hover:underline flex items-center gap-1"
-            >
-              <Icon name="Settings" size={14} />
-              Adjust Weights
-            </button>
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#16A34A' }} />
+                  <span>80%+</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#EAB308' }} />
+                  <span>60-79%</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#DC2626' }} />
+                  <span>&lt;60%</span>
+                </div>
+              </div>
+              <button
+                onClick={onOpenScoringSettings}
+                className="text-xs text-primary hover:text-primary/80 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-all duration-200"
+              >
+                <Icon name="Settings" size={14} />
+                Adjust Weights
+              </button>
+            </div>
           </div>
           {results?.factors?.map((factor, index) => (
-            <div key={factor?.name} className="border border-border rounded-lg overflow-hidden">
+            <div key={factor?.name} className="factor-card">
               <button
                 onClick={() => setExpandedFactor(expandedFactor === index ? null : index)}
-                className="w-full p-4 hover:bg-muted/50 transition-colors"
+                className="factor-card-header"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Icon name={factor?.icon} size={16} color={factor?.color} />
+                <div className="flex items-center justify-between w-full mb-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${getScoreColor(factor?.score)}15` }}
+                    >
+                      <Icon name={factor?.icon} size={16} color={getScoreColor(factor?.score)} />
+                    </div>
                     <span className="text-sm font-medium text-foreground">
                       {factor?.name}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-mono text-muted-foreground">
+                  <div className="flex items-center gap-4">
+                    <span
+                      className="text-sm font-mono font-semibold"
+                      style={{ color: getScoreColor(factor?.score) }}
+                    >
                       {factor?.score}%
                     </span>
-                    <Icon 
-                      name={expandedFactor === index ? 'ChevronUp' : 'ChevronDown'} 
-                      size={16} 
+                    <Icon
+                      name={expandedFactor === index ? 'ChevronUp' : 'ChevronDown'}
+                      size={16}
                       className="text-muted-foreground"
                     />
                   </div>
                 </div>
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                <div className="factor-progress">
                   <div
-                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    className="factor-progress-bar"
                     style={{
                       width: `${factor?.score}%`,
-                      backgroundColor: factor?.color
+                      backgroundColor: getScoreColor(factor?.score),
+                      boxShadow: `0 0 8px ${getScoreColor(factor?.score)}40`
                     }}
                   />
                 </div>
               </button>
-              
+
               {expandedFactor === index && (
-                <div className="px-4 pb-4 pt-2 bg-muted/30 border-t border-border">
-                  <div className="space-y-3">
+                <div className="factor-card-content">
+                  <div className="space-y-4">
                     {factor?.matchedKeywords !== undefined && !['Location Match', 'Experience Level', 'Education'].includes(factor?.name) && (
-                      <div className="flex items-start gap-2 text-xs">
-                        <Icon name="CheckCircle" size={14} color={factor?.color} className="mt-0.5" />
+                      <div className="flex items-start gap-3 text-sm">
+                        <Icon name="CheckCircle" size={16} color={getScoreColor(factor?.score)} className="mt-0.5 flex-shrink-0" />
                         <div>
                           <span className="font-medium text-foreground">
                             {factor?.name === 'Skills Match' ? 'Matched Skills: ' : 'Matched Keywords: '}
@@ -811,21 +871,21 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
                         </div>
                       </div>
                     )}
-                    
-                    <div className="flex items-start gap-2 text-xs">
-                      <Icon name="Info" size={14} color={factor?.color} className="mt-0.5" />
+
+                    <div className="flex items-start gap-3 text-sm">
+                      <Icon name="Info" size={16} color={getScoreColor(factor?.score)} className="mt-0.5 flex-shrink-0" />
                       <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                         {renderExplanation(factor?.explanation)}
                       </p>
                     </div>
 
                     {results?.weights && (
-                      <div className="flex items-start gap-2 text-xs pt-2 border-t border-border">
-                        <Icon name="Scale" size={14} color="var(--color-muted-foreground)" className="mt-0.5" />
+                      <div className="flex items-start gap-3 text-sm pt-3 border-t border-border">
+                        <Icon name="Scale" size={16} color="var(--color-muted-foreground)" className="mt-0.5 flex-shrink-0" />
                         <div>
                           <span className="font-medium text-foreground">Weight in Overall Score: </span>
                           <span className="text-muted-foreground">
-                            {results?.weights?.[factor?.name?.toLowerCase()?.replace(' ', '_')?.replace('_match', '')?.replace('_level', '')?.replace('_alignment', '') || 'skills']}% 
+                            {results?.weights?.[factor?.name?.toLowerCase()?.replace(' ', '_')?.replace('_match', '')?.replace('_level', '')?.replace('_alignment', '') || 'skills']}%
                             {' '}(contributes {Math.round((factor?.score * (results?.weights?.[factor?.name?.toLowerCase()?.replace(' ', '_')?.replace('_match', '')?.replace('_level', '')?.replace('_alignment', '') || 'skills'] || 0)) / 100)} points to total score)
                           </span>
                         </div>
@@ -838,13 +898,15 @@ const AnalysisResultsPanel = ({ results, onOpenScoringSettings, resumeText, jobD
           ))}
         </div>
 
-        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <Icon name="Lightbulb" size={20} color="var(--color-primary)" />
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Icon name="Lightbulb" size={20} color="var(--color-primary)" />
+            </div>
             <div>
               <h4 className="font-semibold text-foreground mb-2 text-sm">Pro Tip</h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Click on any factor above to see detailed explanations about how your score was calculated. 
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Click on any factor above to see detailed explanations about how your score was calculated.
                 You can adjust the importance of each factor by clicking "Adjust Weights" to match your priorities.
               </p>
             </div>

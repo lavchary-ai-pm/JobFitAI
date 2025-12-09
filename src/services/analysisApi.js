@@ -76,6 +76,39 @@ export const analyzeWithClaude = async (resumeText, jobDescription) => {
       `✓ Analysis complete: ${result.tokens} tokens used`
     );
 
+    // DEBUG: Log the actual data being returned to verify experience is present
+    console.log('📥 Backend returned data:', {
+      hasExperienceMatch: !!result.data.experienceMatch,
+      yourExperience: result.data.experienceMatch?.yourExperience,
+      requiredExperience: result.data.experienceMatch?.requiredExperience,
+      fullExperienceMatch: result.data.experienceMatch
+    });
+
+    // COMPATIBILITY FIX: Handle missing 'yourExperience' field from older backends
+    // Older Cloudflare Workers endpoint doesn't return 'yourExperience', only candidateYears/requiredYears
+    if (result.data.experienceMatch && !result.data.experienceMatch.yourExperience) {
+      const exp = result.data.experienceMatch;
+      const mainRole = result.data.resumeParsed?.mainRole || 'Professional';
+      const years = exp.candidateYears || exp.candidateYears;
+
+      // Construct yourExperience from available data
+      if (years) {
+        exp.yourExperience = `${years}+ years as ${mainRole}`;
+        console.log('⚠️ Constructed missing yourExperience field:', exp.yourExperience);
+      } else {
+        exp.yourExperience = 'Not mentioned';
+        console.log('⚠️ No years data available, using fallback');
+      }
+    }
+
+    // Same compatibility fix for requiredExperience
+    if (result.data.experienceMatch && !result.data.experienceMatch.requiredExperience) {
+      const exp = result.data.experienceMatch;
+      const years = exp.requiredYears || 3;
+      exp.requiredExperience = `${years}+ years of experience`;
+      console.log('⚠️ Constructed missing requiredExperience field:', exp.requiredExperience);
+    }
+
     return result.data;
   } catch (error) {
     console.error('Analysis API error:', error);

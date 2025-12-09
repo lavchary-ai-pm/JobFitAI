@@ -172,24 +172,28 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <Icon name="FileText" size={20} color="var(--color-primary)" />
+    <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-3 tracking-tight">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Icon name="FileText" size={20} color="var(--color-primary)" />
+          </div>
           Resume Input
         </h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 p-1 bg-muted rounded-lg">
           <Button
-            variant={uploadMethod === 'text' ? 'default' : 'outline'}
+            variant={uploadMethod === 'text' ? 'default' : 'ghost'}
             size="sm"
             onClick={handleSwitchToText}
+            className={uploadMethod === 'text' ? 'shadow-sm' : ''}
           >
             Paste Text
           </Button>
           <Button
-            variant={uploadMethod === 'file' ? 'default' : 'outline'}
+            variant={uploadMethod === 'file' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setUploadMethod('file')}
+            className={uploadMethod === 'file' ? 'shadow-sm' : ''}
           >
             Upload File
           </Button>
@@ -198,15 +202,15 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
       {uploadMethod === 'file' ? (
         <div>
           {uploadedFileName ? (
-            <div className="mb-6 p-4 bg-success/10 border border-success/30 rounded-lg flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
-                <Icon name="CheckCircle2" size={20} color="var(--color-success)" />
+            <div className="mb-6 p-4 bg-success/10 border border-success/20 rounded-xl flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl bg-success/20 flex items-center justify-center flex-shrink-0">
+                <Icon name="CheckCircle2" size={22} color="var(--color-success)" />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-foreground">
                   Resume uploaded successfully
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground mt-0.5">
                   {uploadedFileName}
                 </p>
               </div>
@@ -215,7 +219,7 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
                   setUploadedFileName(null);
                   setUploadMethod('file');
                 }}
-                className="text-xs text-primary hover:underline"
+                className="text-sm text-primary hover:text-primary/80 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-all duration-200"
               >
                 Change
               </button>
@@ -235,11 +239,13 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
               onChange={handleFileSelect}
               className="hidden"
             />
-            <Icon name="Upload" size={48} className="mx-auto mb-4 text-muted-foreground" />
-            <p className="text-foreground font-medium mb-2">
+            <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-5 border border-border">
+              <Icon name="Upload" size={28} className="text-muted-foreground" />
+            </div>
+            <p className="text-foreground font-medium mb-2 text-base">
               Drag and drop your resume here
             </p>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-5">
               or click to browse files
             </p>
             <Button
@@ -248,10 +254,11 @@ const ResumeUploadSection = ({ onResumeChange, resumeText }) => {
                 e.stopPropagation();
                 fileInputRef?.current?.click();
               }}
+              className="mb-5"
             >
               Select File
             </Button>
-            <p className="text-xs text-muted-foreground mt-4">
+            <p className="text-sm text-muted-foreground">
               Supported formats: PDF, DOC, DOCX, TXT (Max 5MB)
             </p>
           </div>
@@ -269,11 +276,13 @@ Include:
 • Skills
 • Work experience
 • Education`}
-            className="w-full h-96 px-4 py-3 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none custom-scrollbar"
+            className="input-dark w-full h-96 resize-none custom-scrollbar"
           />
-          <p className="text-xs text-muted-foreground mt-2">
-            {resumeText?.length} characters
-          </p>
+          <div className="flex items-center justify-between mt-3">
+            <p className="text-sm text-muted-foreground">
+              {resumeText?.length?.toLocaleString()} characters
+            </p>
+          </div>
         </div>
       )}
     </div>

@@ -1241,6 +1241,14 @@ Benefits:
 
       const pitch = generatePitch(overallScore, skillsScore, claudeAnalysis, resumeText, jobDescription);
 
+      // DEBUG: Log what's about to be used in results object
+      console.log('🔨 Building results object - Experience data:', {
+        yourExperience: claudeAnalysis.experienceMatch.yourExperience,
+        requiredExperience: claudeAnalysis.experienceMatch.requiredExperience,
+        score: claudeAnalysis.experienceMatch.score,
+        explanation: experienceExplanation
+      });
+
       // Build results object with Claude insights
       const results = {
         overallScore,
@@ -1319,6 +1327,14 @@ Benefits:
         claudeAnalysis: claudeAnalysis // Keep raw data for future use
       };
 
+      // DEBUG: Log final results object before storing in state
+      console.log('✅ Final results object - Experience factor:', {
+        factorName: results.factors[1].name,
+        factorScore: results.factors[1].score,
+        explanation: results.factors[1].explanation,
+        fullFactor: results.factors[1]
+      });
+
       setAnalysisResults(results);
       setAnalysisError(null);
     } catch (error) {
@@ -1357,17 +1373,17 @@ Benefits:
   return (
     <div className="min-h-screen bg-background">
       <HeaderNav />
-      
+
       <main className="main-content">
-        <div className="max-w-screen-2xl mx-auto py-6">
-          <div className="mb-3">
-            <div className="flex items-center justify-between">
+        <div className="max-w-screen-2xl mx-auto py-8">
+          <div className="mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-foreground mb-1">Find Your Perfect Job Match
-
+                <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2 tracking-tight">
+                  Find Your Perfect Job Match
                 </h1>
-                <p className="text-muted-foreground text-sm">Discover skill gaps and get actionable advice before applying
-
+                <p className="text-muted-foreground text-base">
+                  Discover skill gaps and get actionable advice before applying
                 </p>
               </div>
               <Button
@@ -1375,7 +1391,8 @@ Benefits:
                 size="sm"
                 iconName="Settings"
                 iconPosition="left"
-                onClick={() => setScoringConfigOpen(true)}>
+                onClick={() => setScoringConfigOpen(true)}
+                className="hover:bg-muted hover:border-border transition-all duration-200 self-start md:self-auto">
 
                 Scoring Settings
               </Button>
@@ -1383,9 +1400,11 @@ Benefits:
           </div>
 
           {/* Privacy Notice Banner */}
-          <div className="mb-4 p-3 bg-blue/5 border border-blue/20 rounded-lg flex items-center gap-2">
-            <Icon name="Shield" size={16} color="var(--color-primary)" className="flex-shrink-0" />
-            <p className="text-xs text-muted-foreground">
+          <div className="mb-6 p-4 bg-primary/5 border border-primary/10 rounded-xl flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Icon name="Shield" size={18} color="var(--color-primary)" />
+            </div>
+            <p className="text-sm text-muted-foreground">
               Your privacy is protected. All analysis runs locally in your browser—your data is never stored.
             </p>
           </div>
@@ -1403,7 +1422,7 @@ Benefits:
                 onAutoFill={handleAutoFillJob} />
 
 
-              <div className="bg-card border border-border rounded-lg p-6">
+              <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
                 <Button
                   variant="default"
                   size="lg"
@@ -1412,13 +1431,14 @@ Benefits:
                   onClick={handleAnalyze}
                   disabled={!canAnalyze || isAnalyzing}
                   loading={isAnalyzing}
-                  fullWidth>
+                  fullWidth
+                  className="btn-glow h-14 text-base font-semibold">
 
                   {isAnalyzing ? 'Analyzing...' : 'Analyze Match'}
                 </Button>
-                
+
                 {!isValidWeight &&
-                <div className="flex items-center gap-2 mt-3 text-warning text-sm">
+                <div className="flex items-center gap-2 mt-4 text-warning text-sm p-3 bg-warning/5 rounded-lg border border-warning/20">
                     <Icon name="AlertTriangle" size={16} />
                     <span>Scoring weights must total 100%</span>
                   </div>
@@ -1452,67 +1472,82 @@ Benefits:
 
 
       {scoringConfigOpen &&
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card">
-              <h2 className="text-xl font-semibold text-foreground">Scoring Configuration</h2>
+      <div className="modal-overlay">
+          <div className="modal-container">
+            <div className="modal-header">
+              <h2 className="modal-title">Scoring Configuration</h2>
               <button
               onClick={() => setScoringConfigOpen(false)}
-              className="p-2 hover:bg-muted rounded-lg transition-colors">
+              className="w-9 h-9 flex items-center justify-center hover:bg-muted rounded-lg transition-all duration-200">
 
                 <Icon name="X" size={20} />
               </button>
             </div>
-            <div className="p-6">
+            <div className="modal-content">
               <ScoringConfigPanel
               weights={weights}
               onWeightsChange={setWeights}
               onSaveConfig={handleSaveConfig}
               onLoadConfig={handleLoadConfig} />
+            </div>
+            <div className="modal-footer">
+              <Button
+              variant="default"
+              onClick={() => setScoringConfigOpen(false)}
+              className="px-6">
 
-              <div className="flex justify-end mt-6">
-                <Button
-                variant="default"
-                onClick={() => setScoringConfigOpen(false)}>
-
-                  Done
-                </Button>
-              </div>
+                Done
+              </Button>
             </div>
           </div>
         </div>
       }
 
       {/* Footer Privacy Statement */}
-      <footer className="bg-muted/30 border-t border-border mt-16 py-8">
-        <div className="max-w-screen-2xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+      <footer className="bg-card/50 border-t border-border mt-16 py-10">
+        <div className="max-w-screen-2xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-2">Your Privacy</h3>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>✓ No data stored on servers</li>
-                <li>✓ No resumes saved</li>
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Icon name="Shield" size={16} color="var(--color-primary)" />
+                Your Privacy
+              </h3>
+              <ul className="text-sm text-muted-foreground space-y-2">
+                <li className="flex items-center gap-2">
+                  <span className="text-primary">✓</span> No data stored on servers
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-primary">✓</span> No resumes saved
+                </li>
               </ul>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-2">How It Works</h3>
-              <ul className="text-xs text-muted-foreground space-y-1">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Icon name="Cpu" size={16} color="var(--color-primary)" />
+                How It Works
+              </h3>
+              <ul className="text-sm text-muted-foreground space-y-2">
                 <li>• Analysis happens in your browser</li>
                 <li>• Data sent to Claude only for analysis</li>
                 <li>• Results deleted immediately</li>
               </ul>
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-2">Data Handling</h3>
-              <ul className="text-xs text-muted-foreground space-y-1">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Icon name="Lock" size={16} color="var(--color-primary)" />
+                Data Handling
+              </h3>
+              <ul className="text-sm text-muted-foreground space-y-2">
                 <li>• Resume: Not stored or logged</li>
                 <li>• Job Description: Not stored or logged</li>
                 <li>• Personal Info: Processed, never saved</li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-border pt-6 text-center text-xs text-muted-foreground">
-            <p>JobFit AI respects your privacy. All data is processed locally and securely. Nothing about you is retained after you leave this page.</p>
+          <div className="border-t border-border pt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              JobFit AI respects your privacy. All data is processed locally and securely. Nothing about you is retained after you leave this page.
+            </p>
           </div>
         </div>
       </footer>

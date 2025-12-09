@@ -48,10 +48,12 @@ Benefits:
 • Stock options`;
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <Icon name="Briefcase" size={20} color="var(--color-primary)" />
+    <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-lg font-semibold text-foreground flex items-center gap-3 tracking-tight">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Icon name="Briefcase" size={20} color="var(--color-primary)" />
+          </div>
           Job Description
         </h2>
         <Button
@@ -60,6 +62,7 @@ Benefits:
           iconName="Sparkles"
           iconPosition="left"
           onClick={onAutoFill}
+          className="hover:bg-primary/10 hover:border-primary/30 transition-all duration-200"
         >
           Use Sample
         </Button>
@@ -75,11 +78,11 @@ Include:
 • Experience requirements
 • Location
 • Responsibilities`}
-        className="w-full h-96 px-4 py-3 bg-background border border-input rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none custom-scrollbar"
+        className="input-dark w-full h-96 resize-none custom-scrollbar"
       />
-      <div className="flex items-center justify-between mt-2">
-        <p className="text-xs text-muted-foreground">
-          {jobDescription?.length} characters
+      <div className="flex items-center justify-between mt-3">
+        <p className="text-sm text-muted-foreground">
+          {jobDescription?.length?.toLocaleString()} characters
         </p>
         {jobDescription?.length > 0 && (
           <Button
@@ -87,6 +90,7 @@ Include:
             size="sm"
             iconName="X"
             onClick={() => onJobDescriptionChange('')}
+            className="hover:bg-error/10 hover:text-error transition-all duration-200"
           >
             Clear
           </Button>

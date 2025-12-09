@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,73 +7,88 @@
 
 @layer base {
   :root {
-    /* Primary Colors */
-    --color-primary: #2563EB; /* blue-600 - Professional blue for trust and reliability */
-    --color-primary-foreground: #FFFFFF; /* white - High contrast for accessibility */
-    
-    /* Secondary Colors */
-    --color-secondary: #64748B; /* slate-500 - Sophisticated neutral grounding */
-    --color-secondary-foreground: #FFFFFF; /* white - Clear contrast */
-    
-    /* Accent Colors */
-    --color-accent: #10B981; /* emerald-500 - Success-oriented green for opportunities */
-    --color-accent-foreground: #FFFFFF; /* white - Optimal readability */
-    
-    /* Background Colors */
-    --color-background: #FAFBFC; /* gray-50 - Soft off-white reduces eye strain */
-    --color-foreground: #1E293B; /* slate-800 - Deep charcoal for maximum readability */
-    
-    /* Surface Colors */
-    --color-card: #FFFFFF; /* white - Pure white for content cards */
-    --color-card-foreground: #1E293B; /* slate-800 - Clear hierarchy */
-    --color-popover: #FFFFFF; /* white - Clean overlay surfaces */
-    --color-popover-foreground: #1E293B; /* slate-800 - Consistent text */
-    
-    /* Muted Colors */
-    --color-muted: #F1F5F9; /* slate-100 - Subtle backgrounds */
-    --color-muted-foreground: #64748B; /* slate-500 - Supporting information */
-    
-    /* Border & Input */
-    --color-border: #E2E8F0; /* slate-200 - Minimal functional separation */
-    --color-input: #E2E8F0; /* slate-200 - Form field definition */
-    --color-ring: #2563EB; /* blue-600 - Focus indicator matches primary */
-    
-    /* Semantic Colors */
-    --color-success: #059669; /* emerald-600 - High compatibility scores */
-    --color-success-foreground: #FFFFFF; /* white - Clear positive messaging */
-    
-    --color-warning: #D97706; /* amber-600 - Moderate scores requiring attention */
-    --color-warning-foreground: #FFFFFF; /* white - Attention-grabbing contrast */
-    
-    --color-error: #DC2626; /* red-600 - Low compatibility and critical issues */
-    --color-error-foreground: #FFFFFF; /* white - High visibility for errors */
-    --color-destructive: #DC2626; /* red-600 - Destructive actions */
-    --color-destructive-foreground: #FFFFFF; /* white - Clear warning */
-    
-    /* Radius */
-    --radius-sm: 0.375rem; /* 6px - Buttons and small elements */
-    --radius-md: 0.5rem; /* 8px - Cards and containers */
-    --radius-lg: 0.75rem; /* 12px - Large containers */
-    
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  }
+    /* ============================================
+       MODERN SOPHISTICATED UI - JobFit AI
+       Primary: #16A34A (Vibrant Green)
+       Background: #EEEEE9 (Warm Light Gray/Cream)
+       Inspired by Google PageSpeed & Modern SaaS
+       ============================================ */
 
-  .dark {
-    --color-background: #0F172A; /* slate-900 - Dark mode background */
-    --color-foreground: #F1F5F9; /* slate-100 - Light text on dark */
-    --color-card: #1E293B; /* slate-800 - Dark cards */
-    --color-card-foreground: #F1F5F9; /* slate-100 - Light card text */
-    --color-popover: #1E293B; /* slate-800 - Dark overlays */
-    --color-popover-foreground: #F1F5F9; /* slate-100 - Light overlay text */
-    --color-muted: #334155; /* slate-700 - Dark muted backgrounds */
-    --color-muted-foreground: #94A3B8; /* slate-400 - Muted text */
-    --color-border: #334155; /* slate-700 - Dark borders */
-    --color-input: #334155; /* slate-700 - Dark inputs */
+    /* Primary Colors - Vibrant Green (like PageSpeed) */
+    --color-primary: #16A34A; /* Green-600 - Vibrant, trustworthy */
+    --color-primary-foreground: #FFFFFF;
+    --color-primary-hover: #15803D; /* Green-700 */
+    --color-primary-glow: rgba(22, 163, 74, 0.12);
+
+    /* Secondary Colors */
+    --color-secondary: #71717A; /* Zinc-500 */
+    --color-secondary-foreground: #FFFFFF;
+
+    /* Accent Colors */
+    --color-accent: #16A34A;
+    --color-accent-foreground: #FFFFFF;
+
+    /* Background - Warm cream/beige for sophistication */
+    --color-background: #EBEBEB; /* Warm light gray - cards pop against this */
+    --color-foreground: #18181B; /* Zinc-900 - Rich black text */
+
+    /* Surface Colors - Pure white cards with strong contrast */
+    --color-card: #FFFFFF;
+    --color-card-foreground: #18181B;
+    --color-card-hover: #FAFAFA;
+    --color-popover: #FFFFFF;
+    --color-popover-foreground: #18181B;
+
+    /* Muted Colors */
+    --color-muted: #F4F4F5; /* Zinc-100 */
+    --color-muted-foreground: #71717A; /* Zinc-500 */
+
+    /* Border & Input */
+    --color-border: #E4E4E7; /* Zinc-200 */
+    --color-input: #FFFFFF;
+    --color-input-border: #D4D4D8; /* Zinc-300 */
+    --color-ring: #16A34A;
+
+    /* Semantic Colors */
+    --color-success: #16A34A; /* Green-600 */
+    --color-success-foreground: #FFFFFF;
+    --color-success-bg: rgba(22, 163, 74, 0.1);
+
+    --color-warning: #EA580C; /* Orange-600 */
+    --color-warning-foreground: #FFFFFF;
+    --color-warning-bg: rgba(234, 88, 12, 0.1);
+
+    --color-error: #DC2626; /* Red-600 */
+    --color-error-foreground: #FFFFFF;
+    --color-error-bg: rgba(220, 38, 38, 0.1);
+
+    --color-destructive: #DC2626;
+    --color-destructive-foreground: #FFFFFF;
+
+    --color-info: #2563EB;
+    --color-info-foreground: #FFFFFF;
+
+    /* Radius */
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+
+    /* Shadows - Strong, visible card shadows like Design2 */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-base: 0 2px 4px rgba(0, 0, 0, 0.04), 0 4px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.06), 0 8px 16px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.06), 0 16px 32px rgba(0, 0, 0, 0.08);
+    --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.08), 0 32px 64px rgba(0, 0, 0, 0.1);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.06);
+    --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+    --shadow-glow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-base: 200ms ease;
+    --transition-slow: 300ms ease;
+    --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   * {
@@ -81,27 +96,41 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Inter', sans-serif;
     font-weight: 600;
+    letter-spacing: -0.025em;
   }
 
   .font-mono {
     font-family: 'JetBrains Mono', 'Courier New', monospace;
   }
+
+  /* Selection styling */
+  ::selection {
+    background: rgba(11, 191, 101, 0.3);
+    color: #F9FAFB;
+  }
 }
 
 @layer components {
-  /* Header Navigation Styles */
+  /* ============================================
+     HEADER NAVIGATION - Clean White Header
+     ============================================ */
   .header-nav {
-    @apply fixed top-0 left-0 right-0 z-[1000] bg-card border-b border-border;
-    height: 60px;
+    @apply fixed top-0 left-0 right-0 z-[1000];
+    height: 64px;
     padding: 0 24px;
+    background: #FFFFFF;
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
 
   .header-content {
@@ -110,45 +139,64 @@
 
   .header-logo {
     @apply flex items-center gap-3 no-underline;
+    transition: var(--transition-base);
   }
 
   .header-logo-icon {
-    @apply w-8 h-8 rounded-lg flex items-center justify-center;
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
-    transition: transform 200ms ease-out;
+    @apply w-9 h-9 rounded-xl flex items-center justify-center;
+    background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
+    box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+    transition: var(--transition-spring);
   }
 
   .header-logo:hover .header-logo-icon {
     transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
   }
 
   .header-logo-text {
-    @apply text-lg font-semibold text-foreground;
+    @apply text-lg font-bold text-foreground tracking-tight;
   }
 
   .header-actions {
-    @apply flex items-center gap-2;
+    @apply flex items-center gap-3;
   }
 
   .header-menu-button {
     @apply lg:hidden;
   }
 
-  /* Main Content Layout */
+  /* ============================================
+     MAIN CONTENT LAYOUT
+     ============================================ */
   .main-content {
-    @apply pt-[60px] min-h-screen;
+    @apply pt-[64px] min-h-screen;
     padding-left: 24px;
     padding-right: 24px;
   }
 
-  /* Panel Overlay Styles */
+  @media (min-width: 1024px) {
+    .main-content {
+      padding-left: 48px;
+      padding-right: 48px;
+    }
+  }
+
+  /* ============================================
+     PANEL & MODAL STYLES - Glass Effect
+     ============================================ */
   .panel-overlay {
-    @apply fixed inset-0 bg-black/50 z-[2000];
+    @apply fixed inset-0 z-[2000];
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
     animation: fadeIn 200ms ease-out;
   }
 
   .panel-container {
-    @apply fixed top-0 right-0 h-full w-full max-w-md bg-card shadow-xl z-[2001];
+    @apply fixed top-0 right-0 h-full w-full max-w-md z-[2001];
+    background: var(--color-card);
+    border-left: 1px solid var(--color-border);
+    box-shadow: -20px 0 60px rgba(0, 0, 0, 0.15);
     animation: slideInRight 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
@@ -165,14 +213,19 @@
     max-height: calc(100vh - 80px);
   }
 
-  /* Modal Styles */
   .modal-overlay {
-    @apply fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center p-4;
+    @apply fixed inset-0 z-[2000] flex items-center justify-center p-4;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(8px);
     animation: fadeIn 200ms ease-out;
   }
 
   .modal-container {
-    @apply bg-card rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden;
+    @apply w-full max-w-2xl max-h-[90vh] overflow-hidden;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
     animation: scaleIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
@@ -193,68 +246,232 @@
     @apply flex items-center justify-end gap-3 p-6 border-t border-border;
   }
 
-  /* Application Card Styles */
+  /* ============================================
+     CARD STYLES - Elevated White Surfaces
+     ============================================ */
   .application-card {
-    @apply bg-card border border-border rounded-lg p-4 transition-all duration-200;
-    box-shadow: var(--shadow-sm);
+    @apply p-5 transition-all duration-200;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
   }
 
   .application-card:hover {
-    box-shadow: var(--shadow-md);
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-card-hover);
     transform: translateY(-2px);
   }
 
   .application-status {
-    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium;
-  }
-.application-status.pending  {
-    @apply text-warning;
-  }
-.application-status.reviewed  {
-    @apply text-primary;
-  }
-.application-status.applied  {
-    @apply text-success;
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium;
   }
 
-  /* Score Display Styles */
+  .application-status.pending {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+  }
+
+  .application-status.reviewed {
+    background: var(--color-primary-glow);
+    color: var(--color-primary);
+  }
+
+  .application-status.applied {
+    background: var(--color-success-bg);
+    color: var(--color-success);
+  }
+
+  /* ============================================
+     SCORE DISPLAY - Visual Gauges
+     ============================================ */
   .score-badge {
-    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-mono text-lg font-medium;
-  }
-.score-badge.high  {
-    @apply text-success;
-  }
-.score-badge.medium  {
-    @apply text-warning;
-  }
-.score-badge.low  {
-    @apply text-error;
+    @apply inline-flex items-center justify-center px-5 py-2.5 font-mono text-lg font-semibold;
+    border-radius: var(--radius-md);
+    transition: var(--transition-base);
   }
 
-  /* Drag and Drop Zone */
+  .score-badge.high {
+    background: var(--color-success-bg);
+    color: var(--color-success);
+    border: 1px solid rgba(5, 150, 105, 0.2);
+  }
+
+  .score-badge.medium {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+    border: 1px solid rgba(217, 119, 6, 0.2);
+  }
+
+  .score-badge.low {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+  }
+
+  /* Visual Score Gauge Animation */
+  .score-gauge {
+    position: relative;
+    width: 200px;
+    height: 200px;
+  }
+
+  .score-gauge-ring {
+    fill: none;
+    stroke-width: 12;
+    stroke-linecap: round;
+    transition: stroke-dasharray 1s ease-out, stroke 0.3s ease;
+  }
+
+  .score-gauge-bg {
+    stroke: var(--color-muted);
+  }
+
+  .score-gauge-progress {
+    transform-origin: center;
+    transform: rotate(-90deg);
+  }
+
+  /* ============================================
+     DRAG AND DROP ZONE - Enhanced Dark UI
+     ============================================ */
   .drop-zone {
-    @apply border-2 border-dashed border-border rounded-lg p-8 text-center transition-all duration-200 cursor-pointer;
+    @apply p-8 text-center cursor-pointer;
     background: var(--color-muted);
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    transition: var(--transition-base);
     pointer-events: auto;
   }
 
   .drop-zone:hover {
-    @apply border-primary;
-    transform: scale(1.02);
-  }
-.drop-zone.active  {
-    @apply border-primary;
+    background: rgba(5, 150, 105, 0.04);
+    border-color: var(--color-primary);
+    transform: scale(1.01);
   }
 
-  /* Progress Indicator */
+  .drop-zone.active {
+    background: rgba(5, 150, 105, 0.06);
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* ============================================
+     PROGRESS & LOADING
+     ============================================ */
   .progress-pulse {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  /* Tooltip Styles */
+  .loading-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-muted) 0%,
+      var(--color-card-hover) 50%,
+      var(--color-muted) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ============================================
+     TOOLTIP STYLES
+     ============================================ */
   .tooltip {
-    @apply absolute z-50 px-3 py-2 text-sm bg-popover text-popover-foreground rounded-md shadow-lg;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    @apply absolute z-50 px-3 py-2 text-sm rounded-lg;
+    background: var(--color-popover);
+    color: var(--color-popover-foreground);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* ============================================
+     FACTOR CARDS - Score Breakdown
+     ============================================ */
+  .factor-card {
+    @apply overflow-hidden transition-all duration-200;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+  }
+
+  .factor-card:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .factor-card-header {
+    @apply w-full p-4 flex items-center justify-between cursor-pointer;
+    transition: var(--transition-base);
+  }
+
+  .factor-card-header:hover {
+    background: var(--color-muted);
+  }
+
+  .factor-card-content {
+    @apply px-4 pb-4 pt-2;
+    background: var(--color-muted);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .factor-progress {
+    @apply w-full h-2 rounded-full overflow-hidden;
+    background: var(--color-muted);
+  }
+
+  .factor-progress-bar {
+    @apply h-full rounded-full transition-all duration-500 ease-out;
+  }
+
+  /* ============================================
+     INPUT STYLES - Enhanced Focus States
+     ============================================ */
+  .input-dark {
+    @apply w-full px-4 py-3 text-foreground placeholder:text-muted-foreground;
+    background: var(--color-input);
+    border: 1px solid var(--color-input-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition-base);
+  }
+
+  .input-dark:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+  }
+
+  .input-dark:hover:not(:focus) {
+    border-color: #94A3B8;
+  }
+
+  /* ============================================
+     BUTTON GLOW EFFECT
+     ============================================ */
+  .btn-glow {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-glow::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(135deg, #16A34A, #15803D);
+    border-radius: inherit;
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.3s ease;
+    filter: blur(8px);
+  }
+
+  .btn-glow:hover::before {
+    opacity: 0.25;
   }
 }
 
