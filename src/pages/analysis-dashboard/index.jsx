@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import HeaderNav from '../../components/ui/HeaderNav';
 import SettingsModal from '../../components/ui/SettingsModal';
+import FeedbackModal from '../../components/ui/FeedbackModal';
 import ResumeUploadSection from './components/ResumeUploadSection';
 import JobDescriptionSection from './components/JobDescriptionSection';
 import ScoringConfigPanel from './components/ScoringConfigPanel';
@@ -25,6 +26,7 @@ const AnalysisDashboard = () => {
   const [analysisError, setAnalysisError] = useState(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [scoringConfigOpen, setScoringConfigOpen] = useState(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
 
   useEffect(() => {
     const handleOpenSettings = () => setSettingsModalOpen(true);
@@ -1544,13 +1546,26 @@ Benefits:
               </ul>
             </div>
           </div>
-          <div className="border-t border-border pt-8 text-center">
-            <p className="text-sm text-muted-foreground">
+          <div className="border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground text-center sm:text-left">
               JobFit AI respects your privacy. All data is processed locally and securely. Nothing about you is retained after you leave this page.
             </p>
+            <button
+              onClick={() => setFeedbackModalOpen(true)}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Icon name="MessageSquare" size={16} />
+              Feedback
+            </button>
           </div>
         </div>
       </footer>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={feedbackModalOpen}
+        onClose={() => setFeedbackModalOpen(false)}
+      />
     </div>);
 
 };
